@@ -41,6 +41,9 @@ data/
 # Codegraph
 .codegraph/
 
+# Git worktrees (isolated workspaces)
+.worktrees/
+
 # Build info cache
 *.tsbuildinfo
 *.pid
