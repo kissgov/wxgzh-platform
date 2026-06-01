@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WXGZH — 微信公众号第三方智能运营平台</title>
+<meta name="description" content="一站式微信公众号运营管理平台，支持多账号管理、AI内容创作、粉丝数据分析、自动化营销。免费试用，提升10倍运营效率。">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌐</text></svg>">
+<style>
+  html { scroll-behavior: smooth; }
+  .gradient-text { background: linear-gradient(135deg, #1677FF, #07C160); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero-bg { background: linear-gradient(180deg, #f0f5ff 0%, #ffffff 60%); }
+  .card-hover { transition: all 0.3s; }
+  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body class="bg-white text-gray-800 font-sans">
+
+<!-- Nav -->
+<nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur border-b border-gray-100">
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-2 text-xl font-bold">
+      <span class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-sm">W</span>
+      <span>WXGZH</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8 text-sm text-gray-500">
+      <a href="#features" class="hover:text-blue-500 transition">功能</a>
+      <a href="#pricing" class="hover:text-blue-500 transition">定价</a>
+      <a href="#faq" class="hover:text-blue-500 transition">常见问题</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/login" class="text-sm text-gray-600 hover:text-blue-500 transition">登录</a>
+      <a href="/login" class="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition">免费试用</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero-bg pt-32 pb-20 px-6">
+  <div class="max-w-4xl mx-auto text-center">
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-sm mb-6">
+      🚀 已服务 100+ 公众号运营团队
+    </div>
+    <h1 class="text-5xl md:text-6xl font-bold leading-tight mb-6">
+      微信公众号<span class="gradient-text">智能运营</span>平台
+    </h1>
+    <p class="text-xl text-gray-500 mb-10 max-w-2xl mx-auto">
+      多账号统一管理 · AI 辅助内容创作 · 粉丝深度分析 · 自动化营销活动<br>
+      帮助运营团队<strong class="text-gray-700">提升 10 倍效率</strong>
+    </p>
+    <div class="flex justify-center gap-4">
+      <a href="/login" class="px-8 py-3 bg-blue-500 text-white rounded-lg text-lg font-medium hover:bg-blue-600 transition shadow-lg shadow-blue-200">免费开始使用</a>
+      <a href="#features" class="px-8 py-3 border border-gray-200 rounded-lg text-lg text-gray-600 hover:border-blue-300 transition">了解功能</a>
+    </div>
+    <div class="mt-12 bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+      <div class="bg-gray-50 px-4 py-2 flex items-center gap-2 border-b">
+        <span class="w-3 h-3 rounded-full bg-red-400"></span>
+        <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+        <span class="w-3 h-3 rounded-full bg-green-400"></span>
+        <span class="ml-2 text-xs text-gray-400">WXGZH Dashboard</span>
+      </div>
+      <div class="p-4 grid grid-cols-4 gap-3 bg-gray-50">
+        <div class="bg-white rounded p-3 shadow-sm"><div class="h-2 w-3/4 bg-blue-100 rounded mb-2"></div><div class="h-6 w-1/2 bg-blue-200 rounded"></div></div>
+        <div class="bg-white rounded p-3 shadow-sm"><div class="h-2 w-3/4 bg-green-100 rounded mb-2"></div><div class="h-6 w-1/2 bg-green-200 rounded"></div></div>
+        <div class="bg-white rounded p-3 shadow-sm"><div class="h-2 w-3/4 bg-orange-100 rounded mb-2"></div><div class="h-6 w-1/2 bg-orange-200 rounded"></div></div>
+        <div class="bg-white rounded p-3 shadow-sm"><div class="h-2 w-3/4 bg-purple-100 rounded mb-2"></div><div class="h-6 w-1/2 bg-purple-200 rounded"></div></div>
+      </div>
+      <div class="p-4 grid grid-cols-3 gap-3">
+        <div class="h-32 bg-gray-50 rounded border border-dashed border-gray-200"></div>
+        <div class="h-32 bg-gray-50 rounded border border-dashed border-gray-200 col-span-2"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features" class="py-20 px-6 bg-white">
+  <div class="max-w-7xl mx-auto">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-bold mb-4">一站式运营管理</h2>
+      <p class="text-gray-500 text-lg">覆盖公众号运营全生命周期，从授权到分析</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center text-2xl mb-4">🔗</div>
+        <h3 class="font-bold text-lg mb-2">多账号管理</h3>
+        <p class="text-sm text-gray-500">一个平台统一管理所有授权公众号，支持分组、批量切换、团队协作。告别反复登录。</p>
+      </div>
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-green-50 text-green-500 rounded-lg flex items-center justify-center text-2xl mb-4">✍️</div>
+        <h3 class="font-bold text-lg mb-2">AI 内容创作</h3>
+        <p class="text-sm text-gray-500">接入 OpenAI/Claude/DeepSeek 等大模型，智能生成文章、改写润色、生成大纲，让创作效率翻倍。</p>
+      </div>
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-purple-50 text-purple-500 rounded-lg flex items-center justify-center text-2xl mb-4">📊</div>
+        <h3 class="font-bold text-lg mb-2">粉丝数据分析</h3>
+        <p class="text-sm text-gray-500">多维度粉丝画像、RFM 分层、转化漏斗分析、队列留存，数据驱动运营决策。</p>
+      </div>
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-orange-50 text-orange-500 rounded-lg flex items-center justify-center text-2xl mb-4">🚀</div>
+        <h3 class="font-bold text-lg mb-2">营销自动化</h3>
+        <p class="text-sm text-gray-500">渠道二维码追踪、裂变活动管理、自动标签规则、消息群发，精准触达每一位粉丝。</p>
+      </div>
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-cyan-50 text-cyan-500 rounded-lg flex items-center justify-center text-2xl mb-4">💬</div>
+        <h3 class="font-bold text-lg mb-2">智能客服</h3>
+        <p class="text-sm text-gray-500">AI 自动回复粉丝消息，关键词匹配优先，LLM 智能兜底。7×24 小时在线。</p>
+      </div>
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center text-2xl mb-4">🎨</div>
+        <h3 class="font-bold text-lg mb-2">菜单 & 素材管理</h3>
+        <p class="text-sm text-gray-500">可视化菜单编辑器 + 素材库统一管理，支持一键发布、模板复用。</p>
+      </div>
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-amber-50 text-amber-500 rounded-lg flex items-center justify-center text-2xl mb-4">🤖</div>
+        <h3 class="font-bold text-lg mb-2">Agent 编排引擎</h3>
+        <p class="text-sm text-gray-500">内置 8 个 AI Skills，可自由组合创建 Agent。支持任务执行、日志追踪。</p>
+      </div>
+      <div class="card-hover p-6 rounded-xl border border-gray-100 bg-white">
+        <div class="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center text-2xl mb-4">🔐</div>
+        <h3 class="font-bold text-lg mb-2">安全 & 权限</h3>
+        <p class="text-sm text-gray-500">RBAC 细粒度权限控制、多租户数据隔离、操作审计日志、字段级加密，安全可靠。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="py-20 px-6 bg-gray-50">
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-bold mb-4">灵活的定价方案</h2>
+      <p class="text-gray-500 text-lg">从免费开始，随业务增长升级</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="bg-white rounded-2xl p-8 border border-gray-100 card-hover">
+        <h3 class="font-bold text-xl mb-2">免费版</h3>
+        <div class="mb-6"><span class="text-4xl font-bold">¥0</span><span class="text-gray-400">/月</span></div>
+        <ul class="space-y-3 text-sm text-gray-500 mb-8">
+          <li>✅ 2 个公众号</li><li>✅ 5 个用户</li><li>✅ 基础数据分析</li><li>✅ 7 天消息记录</li>
+        </ul>
+        <a href="/login" class="block text-center py-2.5 border-2 border-gray-200 rounded-lg text-gray-600 font-medium hover:border-blue-300 transition">免费开始</a>
+      </div>
+      <div class="bg-white rounded-2xl p-8 border-2 border-blue-500 relative card-hover">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-4 py-0.5 rounded-full text-xs font-medium">推荐</div>
+        <h3 class="font-bold text-xl mb-2">入门版</h3>
+        <div class="mb-6"><span class="text-4xl font-bold">¥99</span><span class="text-gray-400">/月</span></div>
+        <ul class="space-y-3 text-sm text-gray-500 mb-8">
+          <li>✅ 10 个公众号</li><li>✅ 20 个用户</li><li>✅ 高级数据分析</li><li>✅ 30 天消息记录</li><li>✅ 自动标签规则</li>
+        </ul>
+        <a href="/login" class="block text-center py-2.5 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition">立即试用</a>
+      </div>
+      <div class="bg-white rounded-2xl p-8 border border-gray-100 card-hover">
+        <h3 class="font-bold text-xl mb-2">专业版</h3>
+        <div class="mb-6"><span class="text-4xl font-bold">¥299</span><span class="text-gray-400">/月</span></div>
+        <ul class="space-y-3 text-sm text-gray-500 mb-8">
+          <li>✅ 50 个公众号</li><li>✅ 100 个用户</li><li>✅ 全部数据分析</li><li>✅ 无限消息记录</li><li>✅ 批量操作</li><li>✅ 数据导出</li><li>✅ API 访问</li>
+        </ul>
+        <a href="/login" class="block text-center py-2.5 border-2 border-gray-200 rounded-lg text-gray-600 font-medium hover:border-blue-300 transition">立即试用</a>
+      </div>
+      <div class="bg-white rounded-2xl p-8 border border-gray-100 card-hover">
+        <h3 class="font-bold text-xl mb-2">企业版</h3>
+        <div class="mb-6"><span class="text-4xl font-bold">¥999</span><span class="text-gray-400">/月</span></div>
+        <ul class="space-y-3 text-sm text-gray-500 mb-8">
+          <li>✅ 200 个公众号</li><li>✅ 500 个用户</li><li>✅ 全部功能</li><li>✅ 专属技术支持</li><li>✅ SSO 集成</li><li>✅ 审计日志</li><li>✅ SLA 保障</li>
+        </ul>
+        <a href="/login" class="block text-center py-2.5 border-2 border-gray-200 rounded-lg text-gray-600 font-medium hover:border-blue-300 transition">联系我们</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Tech Stack -->
+<section class="py-20 px-6 bg-white">
+  <div class="max-w-4xl mx-auto text-center">
+    <h2 class="text-3xl font-bold mb-12">强大的技术架构</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div><div class="text-3xl mb-2">⚡</div><div class="font-semibold">NestJS</div><div class="text-sm text-gray-400">企业级后端框架</div></div>
+      <div><div class="text-3xl mb-2">⚛️</div><div class="font-semibold">React 18</div><div class="text-sm text-gray-400">现代化前端框架</div></div>
+      <div><div class="text-3xl mb-2">🗄️</div><div class="font-semibold">PostgreSQL</div><div class="text-sm text-gray-400">高性能关系数据库</div></div>
+      <div><div class="text-3xl mb-2">🔴</div><div class="font-semibold">Redis</div><div class="text-sm text-gray-400">缓存 & 消息队列</div></div>
+      <div><div class="text-3xl mb-2">🤖</div><div class="font-semibold">多 LLM 支持</div><div class="text-sm text-gray-400">OpenAI/Claude/DeepSeek</div></div>
+      <div><div class="text-3xl mb-2">📦</div><div class="font-semibold">Monorepo</div><div class="text-sm text-gray-400">pnpm + Turborepo</div></div>
+      <div><div class="text-3xl mb-2">🔒</div><div class="font-semibold">AES-256-GCM</div><div class="text-sm text-gray-400">字段级加密</div></div>
+      <div><div class="text-3xl mb-2">☁️</div><div class="font-semibold">Docker</div><div class="text-sm text-gray-400">容器化部署</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="py-20 px-6 bg-gradient-to-r from-blue-500 to-blue-600">
+  <div class="max-w-3xl mx-auto text-center text-white">
+    <h2 class="text-4xl font-bold mb-4">准备好提升运营效率了吗？</h2>
+    <p class="text-xl text-blue-100 mb-8">免费试用，无需绑定信用卡。14 天试用期，随时取消。</p>
+    <div class="flex justify-center gap-4">
+      <a href="/login" class="px-8 py-3 bg-white text-blue-600 rounded-lg text-lg font-medium hover:bg-gray-100 transition">免费开始使用</a>
+      <a href="https://github.com/kissgov/wxgzh-platform" class="px-8 py-3 border-2 border-white/30 text-white rounded-lg text-lg hover:bg-white/10 transition" target="_blank">GitHub 开源</a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-gray-900 text-gray-400 py-12 px-6">
+  <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+    <div>
+      <div class="flex items-center gap-2 text-white text-lg font-bold mb-4">
+        <span class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-sm">W</span>WXGZH
+      </div>
+      <p class="text-sm">微信公众号第三方智能运营平台</p>
+    </div>
+    <div>
+      <h4 class="text-white font-semibold mb-4">产品</h4>
+      <ul class="space-y-2 text-sm"><li><a href="#features" class="hover:text-white transition">功能</a></li><li><a href="#pricing" class="hover:text-white transition">定价</a></li><li><a href="https://github.com/kissgov/wxgzh-platform" class="hover:text-white transition" target="_blank">开源</a></li></ul>
+    </div>
+    <div>
+      <h4 class="text-white font-semibold mb-4">支持</h4>
+      <ul class="space-y-2 text-sm"><li><a href="#" class="hover:text-white transition">文档</a></li><li><a href="#" class="hover:text-white transition">API</a></li><li><a href="https://github.com/kissgov/wxgzh-platform/issues" class="hover:text-white transition" target="_blank">问题反馈</a></li></ul>
+    </div>
+    <div>
+      <h4 class="text-white font-semibold mb-4">联系我们</h4>
+      <ul class="space-y-2 text-sm"><li>📧 support@wxgzh.com</li><li>🌐 github.com/kissgov</li></ul>
+    </div>
+  </div>
+  <div class="max-w-7xl mx-auto mt-12 pt-8 border-t border-gray-800 text-center text-sm">
+    &copy; 2026 WXGZH Platform. All rights reserved. Built with ❤️ for WeChat operators.
+  </div>
+</footer>
+
+</body>
+</html>
