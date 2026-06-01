@@ -13,7 +13,7 @@ build/
 .env.*.local
 
 # Prisma
-prisma/migrations/
+# prisma/migrations/ — 保留迁移文件用于部署
 
 # IDE
 .vscode/
