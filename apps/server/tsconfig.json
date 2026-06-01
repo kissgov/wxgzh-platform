@@ -19,6 +19,7 @@
       "@wxgzh/shared": ["../../packages/shared/src/index.ts"]
     },
     "incremental": true,
+    "isolatedModules": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
