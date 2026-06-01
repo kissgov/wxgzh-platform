@@ -15,7 +15,8 @@
     "rootDir": "./src",
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@wxgzh/shared": ["../../packages/shared/src/index.ts"]
     },
     "incremental": true,
     "skipLibCheck": true,
