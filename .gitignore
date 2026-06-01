@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Prisma
+prisma/migrations/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# Turbo
+.turbo/
+
+# Logs
+logs/
+*.log
+
+# MinIO data (local dev)
+data/
+
+# Codegraph
+.codegraph/
+
+# Build info cache
+*.tsbuildinfo
+*.pid
+
+# Server build
+apps/server/dist/
+
+# Web build
+apps/web/dist/
+
+# Shared build
+packages/shared/dist/

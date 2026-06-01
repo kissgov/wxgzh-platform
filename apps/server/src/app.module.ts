@@ -1,0 +1,95 @@
+// 根模块 — 统一管理所有业务模块和基础设施
+// ============================================================================
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bullmq';
+
+import { ConfigModule } from './config/config.module';
+import { PrismaModule } from './prisma/prisma.module';
+
+// 基础设施
+import { TenantMiddleware } from './common/middleware/tenant.middleware';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { TraceIdInterceptor } from './common/interceptors/trace-id.interceptor';
+import { TenantThrottlerGuard } from './common/guards/tenant-throttler.guard';
+import { SubscriptionLimitGuard } from './common/guards/subscription-limit.guard';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
+
+// 外部集成
+import { WechatModule } from './integrations/wechat/wechat.module';
+
+// 对象存储
+import { OssModule } from './modules/oss/oss.module';
+
+// 业务模块
+import { AuthModule } from './modules/auth/auth.module';
+import { TenantModule } from './modules/tenant/tenant.module';
+import { PlatformModule } from './modules/platform/platform.module';
+import { AccountModule } from './modules/account/account.module';
+import { FollowerModule } from './modules/follower/follower.module';
+import { MessageModule } from './modules/message/message.module';
+import { MaterialModule } from './modules/material/material.module';
+import { MenuModule } from './modules/menu/menu.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { ContentModule } from './modules/content/content.module';
+import { CampaignModule } from './modules/campaign/campaign.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { LlmModule } from './modules/llm/llm.module';
+import { AgentModule } from './modules/agent/agent.module';
+
+@Module({
+  imports: [
+    // 配置（Zod 校验，启动门禁）
+    ConfigModule,
+    // 数据库
+    PrismaModule,
+    // 对象存储
+    OssModule,
+    // Redis + 任务队列
+    BullModule.forRoot({
+      connection: { url: process.env['REDIS_URL'] || 'redis://localhost:6379' },
+    }),
+    // 限流（按租户+IP）
+    ThrottlerModule.forRoot([{ ttl: 1000, limit: 100 }]),
+    // 事件总线（模块间解耦）
+    EventEmitterModule.forRoot({ wildcard: true, maxListeners: 20 }),
+    // 定时任务
+    ScheduleModule.forRoot(),
+    // 外部集成
+    WechatModule,
+    // 业务模块
+    AuthModule,
+    TenantModule,
+    PlatformModule,
+    AccountModule,
+    FollowerModule,
+    MessageModule,
+    MaterialModule,
+    MenuModule,
+    AnalyticsModule,
+    ContentModule,
+    CampaignModule,
+    PaymentModule,
+    LlmModule,
+    AgentModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },            // ① 认证（填充 request.user）
+    { provide: APP_GUARD, useClass: SubscriptionLimitGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },        // ② 授权（校验 request.user.permissions）
+    { provide: APP_GUARD, useClass: TenantThrottlerGuard },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    { provide: APP_INTERCEPTOR, useClass: TraceIdInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+  ],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TenantMiddleware).forRoutes('*');
+  }
+}

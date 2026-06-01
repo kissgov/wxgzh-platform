@@ -1,0 +1,49 @@
+{
+  "name": "wxgzh-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "微信公众号第三方运营管理平台",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:seed": "prisma db seed"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.0",
+    "prettier-plugin-tailwindcss": "^0.5.0",
+    "prisma": "6.6.0",
+    "tsx": "^4.22.3",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "bcrypt",
+      "esbuild",
+      "msgpackr-extract",
+      "prisma"
+    ]
+  },
+  "dependencies": {
+    "@prisma/client": "6.6.0",
+    "bcryptjs": "^3.0.3",
+    "qrcode.react": "^4.2.0"
+  }
+}

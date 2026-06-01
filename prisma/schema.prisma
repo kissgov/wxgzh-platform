@@ -1,0 +1,1405 @@
+// ============================================================================
+// 微信公众号第三方运营管理平台 — 数据库模型定义
+// 版本: v1.0.0 | 数据库: PostgreSQL 16 | ORM: Prisma 6
+// ============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// 1. 基础设施模型 (Infrastructure)
+// ============================================================================
+
+/// 租户
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String                                          // 租户名称（公司名）
+  slug      String   @unique                               // 租户唯一标识（URL友好）
+  contact   String?                                         // 联系人
+  phone     String?                                         // 联系电话（加密存储）
+  status    String   @default("active")                    // active | suspended | cancelled
+  config    Json?                                           // 租户级配置（JSONB）
+
+  // ── 订阅计费 ──
+  plan                     String?   @default("free")      // free | starter | pro | enterprise
+  billingPeriod            String?   @default("trial")     // trial | monthly | quarterly | yearly | permanent
+  maxAuthorizers           Int       @default(2)           // 最大授权公众号数
+  maxUsers                 Int       @default(5)           // 最大用户数
+  subscriptionExpiresAt    DateTime?                        // 订阅到期时间
+  trialEndsAt              DateTime?                        // 试用到期时间
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  users           User[]
+  authorizers     Authorizer[]
+  accountGroups   AccountGroup[]
+  followers       Follower[]
+  materials       Material[]
+  broadcastMsgs   BroadcastMessage[]
+  userAuthorizers UserAuthorizer[]
+  paymentOrders   PaymentOrder[]
+  subscriptionRecords SubscriptionRecord[]
+  paymentConfig   PaymentConfig?
+  llmConfig       LlmConfig?
+  skills          Skill[]
+  agents          Agent[]
+  agentTasks      AgentTask[]
+  invitations     Invitation[]
+  approvalWorkflows ApprovalWorkflow[]
+  approvalRequests  ApprovalRequest[]
+  teamActivities    TeamActivity[]
+  articles        Article[]
+  articleCategories ArticleCategory[]
+  articleTemplates  ArticleTemplate[]
+  campaigns       Campaign[]
+  channelQrCodes  ChannelQrCode[]
+  conversionFunnels ConversionFunnel[]
+
+  @@map("tenants")
+}
+
+/// 用户
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  email        String                                     // 登录邮箱
+  passwordHash String                                     // bcrypt 哈希
+  name         String                                     // 显示名
+  avatar       String?                                    // 头像 URL
+  status       String   @default("active")               // active | disabled
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  userRoles UserRole[]
+  auditLogs AuditLog[]
+  userAuthorizers UserAuthorizer[]
+  sentInvitations    Invitation[]     @relation("Inviter")
+  submittedRequests  ApprovalRequest[]
+  approvalSteps      ApprovalStep[]
+  teamActivities     TeamActivity[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+/// 角色
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  name        String                                       // 角色名称
+  slug        String                                       // 角色标识（super_admin | admin | editor | analyst | cs）
+  description String?
+  isSystem    Boolean  @default(false)                    // 系统预置角色（不可删除）
+  isDefault   Boolean  @default(false)                    // 新用户默认角色
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+/// 用户-角色关联
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+/// 权限
+model Permission {
+  id          String @id @default(cuid())
+  slug        String @unique                               // 权限标识（follower:read | menu:write | account:delete）
+  name        String                                       // 权限名称
+  resource    String                                       // 资源（follower | message | material | menu | analytics）
+  action      String                                       // 动作（read | create | update | delete | publish）
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+/// 角色-权限关联
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// 操作日志
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String
+  action       String                                       // 操作动作（auth.revoke | follower.delete | menu.publish）
+  resource     String                                       // 操作资源类型
+  resourceId   String?                                      // 操作资源 ID
+  detail       Json?                                        // 操作详情（JSONB）
+  ip           String?                                      // 操作 IP
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// 2. 第三方平台授权 (M01 — Platform Auth)
+// ============================================================================
+
+/// 第三方平台应用
+model ComponentApp {
+  id             String    @id @default(cuid())
+  appId          String    @unique                        // component_appid
+  appSecret      String                                   // component_appsecret（AES-256-GCM 加密）
+  token          String                                   // 消息校验 Token
+  encodingAesKey String                                   // 消息加解密 Key（AES-256-GCM 加密）
+  verifyTicket   String?                                  // component_verify_ticket（加密存储）
+  accessToken    String?                                  // component_access_token（加密存储）
+  tokenExpireAt  DateTime?
+  status         String    @default("active")             // active | disabled
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  authorizers  Authorizer[]
+  authEvents   AuthEvent[]
+
+  @@map("component_apps")
+}
+
+/// 授权公众号
+model Authorizer {
+  id             String    @id @default(cuid())
+  tenantId       String
+  componentAppId String
+  appId          String    @unique                        // 授权方 appid
+  appType        Int                                      // 0=订阅号 1=订阅号转服务号 2=服务号
+  nickName       String                                   // 公众号昵称
+  headImg        String?                                  // 头像 URL
+  qrcodeUrl      String?                                  // 二维码 URL
+  principalName  String?                                  // 主体名称
+  signature      String?                                  // 功能介绍
+  accessToken    String?                                  // authorizer_access_token（加密）
+  refreshToken   String?                                  // authorizer_refresh_token（加密）
+  tokenExpireAt  DateTime?
+  funcInfo       Json                                     // 授权权限集 [{funcscope_category:{id:1}}, ...]
+  serviceInfo    Json?                                    // 服务商信息
+  verifyInfo     Json?                                    // 认证信息
+  status         String    @default("authorized")         // authorized | expired | revoked
+  authorizedAt   DateTime  @default(now())
+  expiredAt      DateTime?
+  lastSyncAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  componentApp ComponentApp @relation(fields: [componentAppId], references: [id])
+  authEvents   AuthEvent[]
+
+  followers       Follower[]
+  autoReplyRules  AutoReplyRule[]
+  broadcastMsgs   BroadcastMessage[]
+  menuConfigs     MenuConfig[]
+  syncTasks       SyncTask[]
+  followerStats   FollowerStat[]
+  messageStats    MessageStat[]
+  newsStats       NewsStat[]
+  groupItems      AccountGroupItem[]
+  userAuthorizers UserAuthorizer[]
+  articles        Article[]
+  campaigns       Campaign[]
+  channelQrCodes  ChannelQrCode[]
+  conversionFunnels ConversionFunnel[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([componentAppId])
+  @@map("authorizers")
+}
+
+/// 授权事件日志
+model AuthEvent {
+  id            String   @id @default(cuid())
+  componentAppId String
+  authorizerId  String?
+  eventType     String                                     // ticket | authorized | updateauthorized | unauthorized
+  rawXml        String?                                    // 原始 XML（仅保留 30 天，定时清理）
+  processed     Boolean  @default(true)
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  componentApp ComponentApp @relation(fields: [componentAppId], references: [id])
+  authorizer   Authorizer?  @relation(fields: [authorizerId], references: [id])
+
+  @@index([componentAppId, createdAt])
+  @@index([authorizerId])
+  @@map("auth_events")
+}
+
+// ============================================================================
+// 3. 多公众号管理 (M02 — Account Groups)
+// ============================================================================
+
+/// 公众号分组
+model AccountGroup {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String                                         // 分组名称
+  parentId  String?                                        // 父分组 ID（支持树形结构）
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  tenant    Tenant             @relation(fields: [tenantId], references: [id])
+  parent    AccountGroup?      @relation("GroupTree", fields: [parentId], references: [id])
+  children  AccountGroup[]     @relation("GroupTree")
+  items     AccountGroupItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, parentId])
+  @@map("account_groups")
+}
+
+/// 分组-公众号关联（多对多）
+model AccountGroupItem {
+  id            String   @id @default(cuid())
+  groupId       String
+  authorizerId  String
+  createdAt     DateTime @default(now())
+
+  group      AccountGroup @relation(fields: [groupId], references: [id])
+  authorizer Authorizer   @relation(fields: [authorizerId], references: [id])
+
+  @@unique([groupId, authorizerId])
+  @@map("account_group_items")
+}
+
+// ============================================================================
+// 4. 粉丝管理 (M03 — Followers)
+// ============================================================================
+
+/// 粉丝（用户）
+model Follower {
+  id             String    @id @default(cuid())
+  tenantId       String
+  authorizerId   String
+  openid         String                                        // 微信 openid
+  unionid        String?                                       // 微信 unionid（跨公众号关联）
+  nickname       String?                                       // 昵称
+  headImg        String?                                       // 头像 URL
+  sex            Int?                                          // 0=未知 1=男 2=女
+  country        String?                                       // 国家
+  province       String?                                       // 省份
+  city           String?                                       // 城市
+  subscribe      Boolean   @default(true)                      // 是否关注
+  subscribeAt    DateTime?                                     // 关注时间
+  unsubscribeAt  DateTime?                                     // 取关时间
+  subscribeScene String?                                       // 关注来源（ADD_SCENE_SEARCH 等）
+  qrScene        String?                                       // 二维码场景值
+  qrSceneStr     String?                                       // 二维码场景描述
+  interactCount  Int       @default(0)                         // 互动次数（累计）
+  lastInteractAt DateTime?                                     // 最后互动时间
+  remark         String?                                       // 运营者备注
+  extra          Json?                                         // 扩展字段（JSONB）
+  syncedAt       DateTime?                                     // 最后同步时间
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  tagRelations    FollowerTagRelation[]
+  blacklistEntry  Blacklist?
+  messageLogs     MessageLog[]
+  rfmSegment      RfmSegment?
+  events          FollowerEvent[]
+
+  @@unique([authorizerId, openid])
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, subscribe])
+  @@index([authorizerId, subscribeAt])
+  @@index([tenantId, authorizerId, subscribeAt])            // 粉丝趋势查询
+  @@index([openid, unionid])                                // 跨号关联查询
+  @@index([createdAt], type: Brin)
+  @@map("followers")
+}
+
+/// 粉丝标签
+model FollowerTag {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  wechatTagId  Int?                                         // 微信侧标签 ID（同步后回填）
+  name         String                                       // 标签名称
+  color        String?   @default("#1677FF")               // 标签颜色
+  isSystem     Boolean   @default(false)                   // 系统标签（从微信同步）
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  tagRelations FollowerTagRelation[]
+  tagRules     TagRule[]
+
+  @@unique([authorizerId, name])
+  @@index([tenantId, authorizerId])
+  @@map("follower_tags")
+}
+
+/// 粉丝-标签关联
+model FollowerTagRelation {
+  id         String   @id @default(cuid())
+  followerId String
+  tagId      String
+  source     String   @default("manual")                   // manual | rule | wechat_sync
+  createdAt  DateTime @default(now())
+
+  follower Follower    @relation(fields: [followerId], references: [id])
+  tag      FollowerTag @relation(fields: [tagId], references: [id])
+
+  @@unique([followerId, tagId])
+  @@map("follower_tag_relations")
+}
+
+/// 自动标签规则
+model TagRule {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  name         String                                       // 规则名称
+  description  String?
+  conditions   Json                                         // 规则条件 [{field, operator, value}, ...] (JSONB)
+  logic        String   @default("AND")                    // AND | OR
+  targetTagId  String                                       // 满足条件后打上的标签 ID
+  status       String   @default("enabled")                // enabled | disabled
+  lastExecAt   DateTime?                                    // 上次执行时间
+  lastExecCount Int?                                        // 上次执行影响人数
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  targetTag    FollowerTag         @relation(fields: [targetTagId], references: [id])
+  execLogs     TagRuleExecutionLog[]
+
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, status])
+  @@map("tag_rules")
+}
+
+/// 标签规则执行日志
+model TagRuleExecutionLog {
+  id            String   @id @default(cuid())
+  ruleId        String
+  affectedCount Int                                          // 影响粉丝数
+  taggedCount   Int                                          // 成功打标签数
+  errorMessage  String?
+  startedAt     DateTime
+  finishedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  rule TagRule @relation(fields: [ruleId], references: [id])
+
+  @@index([ruleId, createdAt])
+  @@map("tag_rule_execution_logs")
+}
+
+/// 黑名单
+model Blacklist {
+  id           String   @id @default(cuid())
+  authorizerId String
+  followerId   String    @unique
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  follower Follower @relation(fields: [followerId], references: [id])
+
+  @@unique([authorizerId, followerId])
+  @@map("blacklists")
+}
+
+// ============================================================================
+// 5. 消息管理 (M04 — Messages)
+// ============================================================================
+
+/// 自动回复规则
+model AutoReplyRule {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  ruleType     String                                       // follow | keyword | default （关注回复 | 关键词回复 | 默认回复）
+  name         String                                       // 规则名称
+  status       String   @default("enabled")                // enabled | disabled
+  priority     Int      @default(0)                        // 优先级（越大越优先）
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  authorizer      Authorizer      @relation(fields: [authorizerId], references: [id])
+  keywordReplies  KeywordReply[]
+  replyContents   ReplyContent[]
+
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, ruleType, status])
+  @@map("auto_reply_rules")
+}
+
+/// 关键词回复配置
+model KeywordReply {
+  id         String   @id @default(cuid())
+  ruleId     String
+  matchType  String                                       // exact | fuzzy | regex
+  keyword    String                                       // 关键词
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  rule AutoReplyRule @relation(fields: [ruleId], references: [id])
+
+  @@index([ruleId])
+  @@map("keyword_replies")
+}
+
+/// 回复内容
+model ReplyContent {
+  id          String    @id @default(cuid())
+  ruleId      String
+  contentType String                                        // text | image | voice | video | music | news | mpnews | miniprogram
+  content     String                                        // 文本内容 或 media_id 或 JSON 结构化数据
+  sortOrder   Int       @default(0)                        // 排序（多条回复随机/顺序返回时使用）
+  createdAt   DateTime  @default(now())
+
+  rule AutoReplyRule @relation(fields: [ruleId], references: [id])
+
+  @@index([ruleId])
+  @@map("reply_contents")
+}
+
+/// 群发消息
+model BroadcastMessage {
+  id           String    @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  msgType      String                                       // text | image | mpnews | voice | video | wxcard
+  content      Json                                         // 消息体（JSONB）
+  targetType   String    @default("all")                   // all | tag | region | gender
+  targetConfig Json?                                        // 目标筛选条件（JSONB）
+  status       String    @default("draft")                 // draft | pending | sending | success | partial | failed
+  wechatMsgId  String?                                      // 微信返回的 msg_id（用于查询发送状态）
+  wechatMsgDataId String?                                   // 微信返回的 msg_data_id
+  sentCount    Int       @default(0)
+  errorCount   Int       @default(0)
+  scheduledAt  DateTime?                                    // 定时发送时间
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, status])
+  @@index([scheduledAt])                                    // 定时发送查询
+  @@map("broadcast_messages")
+}
+
+/// 消息收发日志
+model MessageLog {
+  id           String   @id @default(cuid())
+  authorizerId String
+  followerId   String
+  msgId        String?                                      // 微信 MsgId（去重用）
+  msgType      String                                       // text | image | voice | video | location | link | event
+  direction    String                                       // inbound | outbound
+  content      String?                                      // 文本内容
+  mediaId      String?                                      // 媒体 ID（图片/语音/视频）
+  event        String?                                      // 事件类型（subscribe | unsubscribe | SCAN | CLICK | VIEW）
+  eventKey     String?                                      // 事件 KEY
+  replyRuleId  String?                                      // 命中的自动回复规则 ID
+  rawXml       String?                                      // 原始 XML（仅保留 7 天）
+  createdAt    DateTime @default(now())
+
+  follower Follower @relation(fields: [followerId], references: [id])
+
+  @@unique([msgId])                                         // 幂等去重
+  @@index([authorizerId, createdAt])
+  @@index([followerId, createdAt])
+  @@index([createdAt], type: Brin)
+  @@map("message_logs")
+}
+
+/// 模板消息配置
+model TemplateMessage {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  templateId   String                                       // 微信模板 ID
+  title        String                                       // 模板标题
+  content      String?                                      // 模板示例内容
+  industry     String?                                      // 所属行业
+  status       String   @default("active")                 // active | disabled
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([authorizerId, templateId])
+  @@index([tenantId, authorizerId])
+  @@map("template_messages")
+}
+
+// ============================================================================
+// 6. 素材管理 (M05 — Materials)
+// ============================================================================
+
+/// 素材
+model Material {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String?
+  type         String                                       // image | voice | video | thumb | news
+  name         String                                       // 素材名称
+  mediaId      String?                                      // 微信 media_id（上传后回填）
+  url          String                                       // 素材访问 URL（MinIO/OSS）
+  thumbUrl     String?                                      // 缩略图 URL（视频素材用）
+  fileSize     Int?                                         // 文件大小（bytes）
+  width        Int?                                         // 图片/视频宽度
+  height       Int?                                         // 图片/视频高度
+  duration     Int?                                         // 音频/视频时长（秒）
+  format       String?                                      // 文件格式（jpg | png | mp4）
+  category     String   @default("uncategorized")          // 分类
+  tags         String[] @default([])                       // 标签数组
+  usageCount   Int      @default(0)                        // 使用次数
+  isSynced     Boolean  @default(false)                    // 是否已同步到微信
+  syncedAt     DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  usageLogs MaterialUsageLog[]
+
+  @@index([tenantId, type])
+  @@index([tenantId, category])
+  @@index([mediaId])
+  @@map("materials")
+}
+
+/// 素材使用记录
+model MaterialUsageLog {
+  id          String   @id @default(cuid())
+  materialId  String
+  usedIn      String                                       // 使用场景（auto_reply | broadcast | menu | news）
+  usedById    String?                                      // 使用方 ID（规则/消息/菜单的 ID）
+  createdAt   DateTime @default(now())
+
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@index([materialId])
+  @@index([usedIn, usedById])
+  @@map("material_usage_logs")
+}
+
+// ============================================================================
+// 7. 菜单管理 (M06 — Menu)
+// ============================================================================
+
+/// 菜单配置
+model MenuConfig {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  version      Int      @default(1)                        // 版本号（每次发布 +1）
+  menuJson     Json                                         // 菜单 JSON [{type, name, key/url/appid/pagepath, sub_button: [...]}]
+  status       String   @default("draft")                  // draft | published
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  authorizer      Authorizer           @relation(fields: [authorizerId], references: [id])
+  publishHistory  MenuPublishHistory[]
+
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, status])
+  @@map("menu_configs")
+}
+
+/// 菜单模板
+model MenuTemplate {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String                                       // 模板名称
+  description String?
+  menuJson    Json                                         // 菜单 JSON（结构同上）
+  category    String?                                      // 模板分类（电商 | 教育 | 科技 | 通用）
+  usageCount  Int      @default(0)                        // 使用次数
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([tenantId])
+  @@index([category])
+  @@map("menu_templates")
+}
+
+/// 菜单发布历史
+model MenuPublishHistory {
+  id           String   @id @default(cuid())
+  menuConfigId String
+  version      Int                                          // 发布的版本号
+  menuJson     Json                                         // 发布时的菜单 JSON（快照）
+  publishedBy  String                                       // 发布人 ID
+  publishedAt  DateTime @default(now())
+
+  menuConfig MenuConfig @relation(fields: [menuConfigId], references: [id])
+
+  @@index([menuConfigId, publishedAt])
+  @@map("menu_publish_history")
+}
+
+// ============================================================================
+// 8. 数据统计 (M07 — Analytics)
+// ============================================================================
+
+/// 数据同步任务
+model SyncTask {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  taskType     String                                       // follower_sync | user_analysis | news_analysis | msg_analysis
+  status       String   @default("pending")                // pending | running | success | failed
+  params       Json?                                        // 任务参数（JSONB：时间范围、接口类型等）
+  result       Json?                                        // 任务结果（JSONB）
+  errorMessage String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, taskType, status])
+  @@index([createdAt])
+  @@map("sync_tasks")
+}
+
+/// 粉丝统计数据（时序）
+model FollowerStat {
+  id              String   @id @default(cuid())
+  authorizerId    String
+  statDate        DateTime                                   // 统计日期
+  newSubscribers  Int      @default(0)                      // 新关注
+  unsubscribers   Int      @default(0)                      // 取关
+  netGrowth       Int      @default(0)                      // 净增
+  totalFollowers  Int      @default(0)                      // 累计
+  sourceData      Json?                                     // 关注来源分布（JSONB）
+  createdAt       DateTime @default(now())
+
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  @@unique([authorizerId, statDate])
+  @@index([authorizerId, statDate])
+  @@map("follower_stats")
+}
+
+/// 消息统计数据（时序）
+model MessageStat {
+  id             String   @id @default(cuid())
+  authorizerId   String
+  statDate       DateTime                                   // 统计日期
+  sentCount      Int      @default(0)                      // 发送数
+  receivedCount  Int      @default(0)                      // 接收数
+  replyCount     Int      @default(0)                      // 回复数
+  replyRate      Float?                                     // 回复率
+  createdAt      DateTime @default(now())
+
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  @@unique([authorizerId, statDate])
+  @@index([authorizerId, statDate])
+  @@map("message_stats")
+}
+
+/// 图文统计数据
+model NewsStat {
+  id               String   @id @default(cuid())
+  authorizerId     String
+  statDate         DateTime
+  msgid            String?                                   // 图文消息 ID（微信返回）
+  title            String?                                   // 图文标题
+  readCount        Int      @default(0)
+  likeCount        Int      @default(0)                     // 点赞（拇指）
+  favorCount       Int      @default(0)                     // 在看（爱心）
+  shareCount       Int      @default(0)
+  commentCount     Int      @default(0)
+  readSourceData   Json?                                     // 阅读来源分布（JSONB）
+  createdAt        DateTime @default(now())
+
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  @@index([authorizerId, statDate])
+  @@index([msgid])
+  @@map("news_stats")
+}
+
+/// 看板缓存（预计算数据）
+model DashboardCache {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  cacheType    String                                       // follower_overview | message_overview | news_overview
+  cacheKey     String                                       // 缓存键（含时间范围等参数）
+  cacheData    Json                                         // 缓存数据（JSONB）
+  expiresAt    DateTime                                     // 过期时间
+  createdAt    DateTime @default(now())
+
+  @@unique([authorizerId, cacheType, cacheKey])
+  @@index([expiresAt])
+  @@map("dashboard_caches")
+}
+
+// ============================================================================
+// 9. 团队协作 (V1 — Team Collaboration)
+// ============================================================================
+
+/// 邀请
+model Invitation {
+  id            String    @id @default(cuid())
+  tenantId      String
+  inviterId     String                                        // 邀请人
+  email         String                                        // 被邀请人邮箱
+  token         String    @unique                            // 邀请 token（UUID v4）
+  roleIds       String[]  @default([])                       // 预设角色 ID
+  authorizerIds String[]  @default([])                       // 预设可管理的公众号
+  status        String    @default("pending")                // pending | accepted | expired | cancelled
+  expiresAt     DateTime                                      // 过期时间（默认 7 天）
+  acceptedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  inviter User   @relation("Inviter", fields: [inviterId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([email])
+  @@map("invitations")
+}
+
+/// 审批流程定义
+model ApprovalWorkflow {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String?
+  name         String                                         // 审批流名称
+  resourceType String                                         // article | campaign | menu | broadcast
+  steps        Json                                           // 审批步骤 [{order, roleId, requiredCount}]
+  status       String   @default("enabled")                  // enabled | disabled
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  requests ApprovalRequest[]
+
+  @@index([tenantId])
+  @@index([tenantId, resourceType])
+  @@map("approval_workflows")
+}
+
+/// 审批请求
+model ApprovalRequest {
+  id           String   @id @default(cuid())
+  tenantId     String
+  workflowId   String
+  resourceType String                                         // article | campaign | menu | broadcast
+  resourceId   String                                         // 待审批的资源 ID
+  submitterId  String                                         // 提交人
+  status       String   @default("pending")                  // pending | approved | rejected | cancelled
+  currentStep  Int      @default(0)
+  submittedAt  DateTime @default(now())
+  resolvedAt   DateTime?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  workflow  ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  submitter User             @relation(fields: [submitterId], references: [id])
+  steps     ApprovalStep[]
+
+  @@index([tenantId, status])
+  @@index([resourceType, resourceId])
+  @@index([submitterId])
+  @@map("approval_requests")
+}
+
+/// 审批步骤
+model ApprovalStep {
+  id         String   @id @default(cuid())
+  requestId  String
+  stepOrder  Int                                              // 第几步
+  approverId String                                           // 审批人
+  status     String   @default("pending")                    // pending | approved | rejected
+  comment    String?
+  actedAt    DateTime?
+
+  request  ApprovalRequest @relation(fields: [requestId], references: [id])
+  approver User            @relation(fields: [approverId], references: [id])
+
+  @@index([requestId])
+  @@index([approverId, status])
+  @@map("approval_steps")
+}
+
+/// 团队活动日志
+model TeamActivity {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String
+  action     String                                           // user.invited | user.joined | article.submitted | article.approved | campaign.published
+  targetType String?                                          // 关联资源类型
+  targetId   String?                                          // 关联资源 ID
+  metadata   Json?                                            // 额外信息
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("team_activities")
+}
+
+// ============================================================================
+// 10. 内容创作 (V1 — Content Creation)
+// ============================================================================
+
+/// 文章
+model Article {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  title        String                                          // 标题（≤64字符）
+  author       String?                                         // 作者名
+  digest       String?                                         // 摘要（≤120字符）
+  content      String?                                         // HTML 正文
+  contentType  String   @default("html")                      // html | markdown
+  coverMediaId String?                                         // 封面素材 ID
+  coverUrl     String?                                         // 封面 URL
+  status       String   @default("draft")                     // draft | pending_review | approved | published | failed
+  scheduledAt  DateTime?                                       // 定时发布
+  publishedAt  DateTime?
+  wechatMsgId  String?                                         // 微信发布返回的 msg_id
+  categoryId   String?                                         // 分类
+  tags         String[] @default([])                          // 标签
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant          @relation(fields: [tenantId], references: [id])
+  authorizer Authorizer      @relation(fields: [authorizerId], references: [id])
+  category   ArticleCategory? @relation(fields: [categoryId], references: [id])
+  revisions  ArticleRevision[]
+
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, status])
+  @@index([authorizerId, scheduledAt])
+  @@map("articles")
+}
+
+/// 文章版本
+model ArticleRevision {
+  id        String   @id @default(cuid())
+  articleId String
+  version   Int
+  title     String
+  content   String?
+  digest    String?
+  createdAt DateTime @default(now())
+
+  article Article @relation(fields: [articleId], references: [id])
+
+  @@index([articleId, version])
+  @@map("article_revisions")
+}
+
+/// 文章分类
+model ArticleCategory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  articles Article[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("article_categories")
+}
+
+/// 文章模板
+model ArticleTemplate {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  category    String?
+  content     String?
+  coverUrl    String?
+  usageCount  Int      @default(0)
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([category])
+  @@map("article_templates")
+}
+
+// ============================================================================
+// 11. 营销活动 (V1 — Campaign Engine)
+// ============================================================================
+
+model Campaign {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  name         String
+  type         String                                          // h5_page | qrcode | referral
+  description  String?
+  status       String   @default("draft")                     // draft | active | paused | ended
+  config       Json?                                           // 活动配置 JSONB
+  startAt      DateTime?
+  endAt        DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+  stats      CampaignStat?
+  qrCodes    ChannelQrCode[]
+
+  @@index([tenantId, authorizerId])
+  @@index([authorizerId, status])
+  @@map("campaigns")
+}
+
+model CampaignStat {
+  id            String   @id @default(cuid())
+  campaignId    String   @unique
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  shares        Int      @default(0)
+  participants  Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@map("campaign_stats")
+}
+
+model ChannelQrCode {
+  id             String   @id @default(cuid())
+  tenantId       String
+  authorizerId   String
+  campaignId     String?
+  name           String
+  sceneStr       String                                       // 场景值
+  ticket         String?                                      // 微信 ticket
+  qrUrl          String?                                      // 二维码图片 URL
+  expireAt       DateTime?
+  scanCount      Int      @default(0)
+  subscribeCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+  campaign   Campaign?  @relation(fields: [campaignId], references: [id])
+  scans      QrCodeScan[]
+
+  @@unique([authorizerId, sceneStr])
+  @@index([tenantId, authorizerId])
+  @@index([campaignId])
+  @@map("channel_qr_codes")
+}
+
+model QrCodeScan {
+  id         String   @id @default(cuid())
+  qrCodeId   String
+  openid     String?
+  event      String   @default("SCAN")                       // SCAN | SUBSCRIBE
+  scannedAt  DateTime @default(now())
+
+  qrCode ChannelQrCode @relation(fields: [qrCodeId], references: [id])
+
+  @@index([qrCodeId, scannedAt])
+  @@map("qr_code_scans")
+}
+
+// ============================================================================
+// 12. 转化分析 (V1 — Conversion Analytics)
+// ============================================================================
+
+model ConversionFunnel {
+  id           String   @id @default(cuid())
+  tenantId     String
+  authorizerId String
+  name         String
+  description  String?
+  steps        Json                                           // [{key, label, eventType}]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  @@index([tenantId, authorizerId])
+  @@map("conversion_funnels")
+}
+
+model RfmSegment {
+  id             String   @id @default(cuid())
+  authorizerId   String
+  followerId     String
+  recencyScore   Int                                            // 1-5
+  frequencyScore Int                                            // 1-5
+  monetaryScore  Int                                            // 1-5
+  segment        String                                         // champions | loyal | potential | at_risk | lost
+  segmentLabel   String?
+  calculatedAt   DateTime @default(now())
+
+  follower Follower @relation(fields: [followerId], references: [id])
+
+  @@unique([followerId])
+  @@index([authorizerId, segment])
+  @@map("rfm_segments")
+}
+
+model FollowerEvent {
+  id           String   @id @default(cuid())
+  authorizerId String
+  followerId   String
+  eventType    String                                          // subscribe | scan_qr | click_menu | view_article | send_message | share
+  eventData    Json?
+  source       String?
+  createdAt    DateTime @default(now())
+
+  follower Follower @relation(fields: [followerId], references: [id])
+
+  @@index([authorizerId, followerId, createdAt])
+  @@index([authorizerId, eventType, createdAt])
+  @@index([createdAt], type: Brin)
+  @@map("follower_events")
+}
+
+model CohortRetention {
+  id           String   @id @default(cuid())
+  authorizerId String
+  cohortDate   DateTime
+  cohortSize   Int
+  period       Int                                            // 0=基准, 1/2/3...
+  retained     Int
+  retentionRate Float?
+  createdAt    DateTime @default(now())
+
+  @@unique([authorizerId, cohortDate, period])
+  @@index([authorizerId, cohortDate])
+  @@map("cohort_retentions")
+}
+
+// ============================================================================
+// 13. LLM 大模型 (AI Integration)
+// ============================================================================
+
+model LlmConfig {
+  id          String   @id @default(cuid())
+  tenantId    String   @unique
+  provider    String   @default("openai")                    // openai | claude | deepseek | qwen | local
+  apiKey      String?                                         // API Key (加密)
+  apiUrl      String?                                         // 自定义 API 地址
+  model       String   @default("gpt-4o")                    // 模型名称
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(4096)
+  systemPrompt String?                                        // 系统提示词
+  dailyLimit  Int      @default(100)                         // 每日调用上限
+  status      String   @default("active")                    // active | disabled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant     Tenant  @relation(fields: [tenantId], references: [id])
+  usageLogs  LlmUsageLog[]
+
+  @@map("llm_configs")
+}
+
+model LlmUsageLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  configId    String
+  scene       String                                         // article_generate | article_rewrite | auto_reply | custom
+  prompt      String?                                           // 用户输入
+  completion  String?                                           // AI 响应
+  model       String
+  tokensIn    Int      @default(0)
+  tokensOut   Int      @default(0)
+  durationMs  Int      @default(0)
+  status      String   @default("success")                   // success | error
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+
+  config LlmConfig @relation(fields: [configId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([configId, createdAt])
+  @@map("llm_usage_logs")
+}
+
+// ============================================================================
+// 14. Agent + Skill (AI Agent 编排)
+// ============================================================================
+
+model Skill {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String                                           // 技能名称
+  slug        String                                           // 技能标识
+  description String?                                          // 技能描述
+  icon        String   @default("RobotOutlined")              // 图标
+  prompt      String                                           // 系统提示词模板
+  inputSchema Json?                                            // 输入参数 schema
+  outputSchema Json?                                           // 输出 schema
+  category    String   @default("general")                    // general | content | service | analytics | marketing
+  isSystem    Boolean  @default(false)                        // 系统内置
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  agentSkills AgentSkill[]
+  tasks       AgentTask[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, category])
+  @@map("skills")
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String                                           // Agent 名称
+  description String?
+  avatar      String   @default("RobotOutlined")              // 头像图标
+  systemPrompt String?                                         // Agent 级系统提示词
+  config      Json?                                            // 配置（temperature, maxTokens 等）
+  status      String   @default("active")                     // active | paused | disabled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  agentSkills  AgentSkill[]
+  tasks        AgentTask[]
+
+  @@index([tenantId, status])
+  @@map("agents")
+}
+
+model AgentSkill {
+  id        String   @id @default(cuid())
+  agentId   String
+  skillId   String
+  priority  Int      @default(0)                               // 优先级
+  config    Json?                                               // 覆盖 Skill 默认配置
+
+  agent Agent @relation(fields: [agentId], references: [id])
+  skill Skill @relation(fields: [skillId], references: [id])
+
+  @@unique([agentId, skillId])
+  @@map("agent_skills")
+}
+
+model AgentTask {
+  id          String   @id @default(cuid())
+  tenantId    String
+  agentId     String
+  skillId     String?
+  name        String
+  input       String                                             // 任务输入
+  output      String?                                            // 任务输出
+  status      String   @default("pending")                      // pending | running | completed | failed
+  errorMsg    String?
+  tokensUsed  Int      @default(0)
+  durationMs  Int      @default(0)
+  createdAt   DateTime @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  agent  Agent   @relation(fields: [agentId], references: [id])
+  skill  Skill?  @relation(fields: [skillId], references: [id])
+
+  @@index([tenantId, agentId, createdAt])
+  @@index([tenantId, status])
+  @@map("agent_tasks")
+}
+
+// ============================================================================
+// 15. 订阅计费模型 (Subscription & Billing)
+// ============================================================================
+// 10. 订阅计费模型 (Subscription & Billing)
+// ============================================================================
+
+/// 用户-公众号分配（细粒度权限）
+model UserAuthorizer {
+  id             String   @id @default(cuid())
+  tenantId       String
+  userId         String
+  authorizerId   String
+  authorizerRole String   @default("editor")               // admin | editor | analyst | cs（在特定公众号下的角色）
+  createdAt      DateTime @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+  authorizer Authorizer @relation(fields: [authorizerId], references: [id])
+
+  @@unique([userId, authorizerId])
+  @@index([tenantId, userId])
+  @@map("user_authorizers")
+}
+
+/// 订阅套餐定义
+model SubscriptionPlan {
+  id            String  @id @default(cuid())
+  slug          String  @unique                           // free | starter | pro | enterprise
+  name          String                                     // 套餐显示名
+  description   String?                                    // 套餐描述
+  priceMonthly  Int     @default(0)                       // 月付价格（分）
+  priceQuarterly Int    @default(0)                       // 季付价格（分）
+  priceYearly   Int     @default(0)                       // 年付价格（分）
+  maxAuthorizers Int    @default(2)                       // 最大公众号数
+  maxUsers      Int     @default(5)                       // 最大用户数
+  trialDays     Int     @default(14)                      // 试用天数
+  features      Json?                                      // 功能列表（JSONB）
+  sortOrder     Int     @default(0)                       // 排序
+  status        String  @default("active")               // active | hidden
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("subscription_plans")
+}
+
+/// 订阅记录
+model SubscriptionRecord {
+  id        String   @id @default(cuid())
+  tenantId  String
+  plan      String                                         // 套餐 slug
+  period    String                                         // monthly | quarterly | yearly
+  amount    Int                                            // 实付金额（分）
+  startedAt DateTime                                       // 开始时间
+  expiresAt DateTime?                                       // 到期时间
+  status    String   @default("active")                   // active | expired | cancelled
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("subscription_records")
+}
+
+/// 支付订单
+model PaymentOrder {
+  id          String    @id @default(cuid())
+  tenantId    String
+  plan        String                                        // 套餐 slug
+  period      String                                        // monthly | quarterly | yearly
+  amount      Int                                           // 金额（分）
+  method      String    @default("wechat")                 // wechat | alipay
+  tradeNo     String?                                       // 第三方交易号
+  qrCodeUrl   String?                                       // 支付二维码 URL
+  status      String    @default("pending")                // pending | paid | cancelled | refunded
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tradeNo])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@map("payment_orders")
+}
+
+/// 支付配置
+model PaymentConfig {
+  id            String   @id @default(cuid())
+  tenantId      String   @unique
+  // 支付通道
+  channel       String   @default("mock")                   // mock | official | thirdparty
+  // 官方直连 — 微信支付
+  wechatAppId   String?
+  wechatMchId   String?
+  wechatApiKey  String?
+  wechatCertPath String?                                     // 微信支付证书路径
+  // 官方直连 — 支付宝
+  alipayAppId   String?
+  alipayPid     String?
+  alipayPrivateKey String?                                   // 支付宝应用私钥
+  alipayPublicKey  String?                                   // 支付宝公钥
+  // 第三方支付网关
+  thirdpartyGateway String?                                  // payjs | xorpay | epay
+  thirdpartyAppId    String?
+  thirdpartyAppKey   String?
+  thirdpartyApiUrl   String?
+  thirdpartyNotifyUrl String?
+  // 通用
+  mockSuccess   Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("payment_configs")
+}

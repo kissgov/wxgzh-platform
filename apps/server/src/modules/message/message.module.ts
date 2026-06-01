@@ -1,0 +1,14 @@
+// Message Module — 消息管理
+// ============================================================================
+import { Module } from '@nestjs/common';
+import { MessageController } from './message.controller';
+import { MessageService } from './message.service';
+import { LlmModule } from '../llm/llm.module';
+
+@Module({
+  imports: [LlmModule],
+  controllers: [MessageController],
+  providers: [MessageService],
+  exports: [MessageService],
+})
+export class MessageModule {}

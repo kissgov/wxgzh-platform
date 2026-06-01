@@ -1,0 +1,31 @@
+/* Tailwind CSS + 全局样式 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Minimal reset：与 Ant Design/Tailwind 共存，避免破坏 AntD 组件样式 */
+html, body, #root {
+  height: 100%;
+  font-size: 14px;
+}
+
+/* Ant Design Layout 全屏适配 */
+.ant-layout {
+  min-height: 100vh;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
