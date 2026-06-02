@@ -168,7 +168,11 @@ export class FollowerController {
     @Query('authorizerId') authorizerId: string,
     @ZodBody(CreateTagRuleInputSchema) input: CreateTagRuleInput,
   ) {
-    const data = await this.followerService.createTagRule(tenantId, authorizerId, input);
+    const dto = {
+      ...input,
+      conditions: input.conditions.map((c) => ({ ...c, value: c.value ?? null })),
+    };
+    const data = await this.followerService.createTagRule(tenantId, authorizerId, dto);
     return { code: 0, message: '规则已创建', data };
   }
 
@@ -180,7 +184,11 @@ export class FollowerController {
     @Param('ruleId') ruleId: string,
     @ZodBody(UpdateTagRuleInputSchema) input: UpdateTagRuleInput,
   ) {
-    const data = await this.followerService.updateTagRule(ruleId, input);
+    const dto = {
+      ...input,
+      conditions: input.conditions?.map((c) => ({ ...c, value: c.value ?? null })),
+    };
+    const data = await this.followerService.updateTagRule(ruleId, dto);
     return { code: 0, message: '规则已更新', data };
   }
 

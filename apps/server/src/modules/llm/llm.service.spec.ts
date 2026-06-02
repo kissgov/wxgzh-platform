@@ -77,7 +77,7 @@ describe('LlmService', () => {
 
       // 2. axios.post 必传 OpenAI URL + Authorization: Bearer + body
       expect(mockedAxios.post).toHaveBeenCalledTimes(1);
-      const [url, body, opts] = mockedAxios.post.mock.calls[0];
+      const [url, body, opts] = mockedAxios.post.mock.calls[0]! as [string, { model: string; messages: unknown[] }, { headers: { Authorization: string }; timeout: number }];
       expect(url).toBe('https://api.openai.com/v1/chat/completions');
       expect(body.model).toBe('gpt-4o');
       expect(body.messages).toEqual([{ role: 'user', content: 'hello' }]);

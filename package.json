@@ -3,11 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "description": "微信公众号第三方运营管理平台",
+  "packageManager": "pnpm@11.4.0",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
+    "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

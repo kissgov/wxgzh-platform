@@ -92,7 +92,7 @@ describe('MessageService', () => {
       const result = await service.matchKeywordReply('a1', 'hello');
 
       // 优先返回 exact 匹配的 rule-A, 而非 fuzzy 的 rule-B
-      expect(result.id).toBe('rule-A');
+      expect(result!.id).toBe('rule-A');
     });
 
     it('should fall back to fuzzy when no exact match', async () => {
@@ -108,7 +108,7 @@ describe('MessageService', () => {
 
       const result = await service.matchKeywordReply('a1', 'what is the price?');
 
-      expect(result.id).toBe('rule-fuzzy');
+      expect(result!.id).toBe('rule-fuzzy');
     });
 
     it('should fall back to default rule when no keyword matches', async () => {
@@ -120,7 +120,7 @@ describe('MessageService', () => {
 
       const result = await service.matchKeywordReply('a1', 'random input');
 
-      expect(result.id).toBe('rule-default');
+      expect(result!.id).toBe('rule-default');
       // findFirst 必须以 authorizerId + ruleType=default 查
       const call = mockPrisma.autoReplyRule.findFirst.mock.calls[0][0];
       expect(call.where.authorizerId).toBe('a1');

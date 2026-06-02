@@ -61,7 +61,7 @@ describe('AnalyticsService', () => {
       expect(result.summary.netGrowth).toBe(20);
       // 3. series 长度 = 数据行数
       expect(result.series).toHaveLength(2);
-      expect(result.series[0].date).toBe('2026-06-01');
+      expect(result.series[0]!.date).toBe('2026-06-01');
     });
 
     it('should return zero summary when no stats in range', async () => {
