@@ -1,0 +1,20 @@
+# gitleaks 配置 — 允许测试 env 占位 key 进入版本控制
+# ============================================================================
+# CI workflow files 用的 ENCRYPTION_KEY 是测试占位 (decode 后是 ASCII 字符串
+# "test-encryption-key-32bytes-abcd"), 不是真实 secret。
+[extend]
+# 继承 gitleaks 8.x 默认规则集
+useDefault = true
+
+[allowlist]
+description = "测试占位 ENCRYPTION_KEY / JWT_SECRET (CI workflow files only)"
+paths = [
+  '''.github/workflows/.*\.yml$''',
+  '''docs/runbooks/.*''',
+  '''docs/adrs/.*''',
+]
+# gitleaks 8.x 要求 regexes 是 string array (非 object array)
+regexes = [
+  '''dGVzdC1lbmNyeXB0aW9uLWtleS0zMmJ5dGVzLWFiY2Q=''',
+  '''test-secret-do-not-use-in-production''',
+]

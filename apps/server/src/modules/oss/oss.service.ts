@@ -1,61 +1,34 @@
-// OSS Service — MinIO / S3-Compatible 对象存储
+// OSS Service — 通过 IStorageProvider 抽象访问对象存储
 // ============================================================================
-import { Injectable, Logger } from '@nestjs/common';
-import * as Minio from 'minio';
+// V2.0 S6: 业务层只依赖 IStorageProvider 接口, 不直接 import MinIO SDK
+// 切换驱动: STORAGE_DRIVER=minio | local (默认 local, 生产改 minio)
+import { Inject, Injectable } from '@nestjs/common';
+import { IStorageProvider, STORAGE_PROVIDER } from '../../integrations/storage/storage.interface';
 
 @Injectable()
 export class OssService {
-  private readonly logger = new Logger(OssService.name);
-  private readonly client: Minio.Client;
-  private readonly bucket: string;
-
-  constructor() {
-    this.bucket = process.env['OSS_BUCKET'] || 'wxgzh-materials';
-    this.client = new Minio.Client({
-      endPoint: process.env['OSS_ENDPOINT'] || 'localhost',
-      port: parseInt(process.env['OSS_PORT'] || '9000', 10),
-      useSSL: process.env['OSS_USE_SSL'] === 'true',
-      accessKey: process.env['OSS_ACCESS_KEY'] || 'minioadmin',
-      secretKey: process.env['OSS_SECRET_KEY'] || 'minioadmin',
-    });
-  }
+  constructor(@Inject(STORAGE_PROVIDER) private readonly storage: IStorageProvider) {}
 
   /**
-   * 上传文件到 MinIO
-   * @returns 文件访问 URL
+   * 上传文件, 返回访问 URL (兼容 V1 调用方: OssService.upload(key, buf, type): Promise<string>)
    */
-  async upload(
-    objectName: string,
-    buffer: Buffer,
-    contentType: string,
-  ): Promise<string> {
-    // 确保 bucket 存在
-    const exists = await this.client.bucketExists(this.bucket);
-    if (!exists) {
-      await this.client.makeBucket(this.bucket);
-      this.logger.log(`Bucket created: ${this.bucket}`);
-    }
-
-    await this.client.putObject(this.bucket, objectName, buffer, buffer.length, {
-      'Content-Type': contentType,
-    });
-
-    const url = await this.getUrl(objectName);
-    this.logger.log(`File uploaded: ${objectName} (${(buffer.length / 1024).toFixed(0)} KB)`);
-    return url;
+  async upload(key: string, body: Buffer, contentType: string): Promise<string> {
+    const res = await this.storage.put({ key, body, contentType });
+    return res.url;
   }
 
-  /** 获取文件公开访问 URL */
-  async getUrl(objectName: string): Promise<string> {
-    const useSSL = process.env['OSS_USE_SSL'] === 'true';
-    const endpoint = process.env['OSS_ENDPOINT'] || 'localhost';
-    const port = process.env['OSS_PORT'] || '9000';
-    const protocol = useSSL ? 'https' : 'http';
-    return `${protocol}://${endpoint}:${port}/${this.bucket}/${objectName}`;
+  /** 获取签名 URL (默认 1 小时) */
+  async getUrl(key: string, expiresInSec: number = 3600): Promise<string> {
+    return this.storage.getSignedUrl({ key, expiresInSec });
   }
 
   /** 删除文件 */
-  async delete(objectName: string): Promise<void> {
-    await this.client.removeObject(this.bucket, objectName);
+  async delete(key: string): Promise<void> {
+    return this.storage.delete(key);
+  }
+
+  /** 文件存在性 */
+  async exists(key: string): Promise<boolean> {
+    return this.storage.exists(key);
   }
 }
