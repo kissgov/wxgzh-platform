@@ -28,6 +28,8 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - name: Tenant-leak scan (S4)
+        run: cd apps/server && npx tsx scripts/tenant-leak-scan.ts
 
   # ── TypeScript 类型检查 ─────────────────────────────────────────────
   typecheck:
