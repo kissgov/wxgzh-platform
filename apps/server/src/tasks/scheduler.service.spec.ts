@@ -37,7 +37,7 @@ describe('SchedulerService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     // 拿到内部 mock 实例
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
     prismaAuthorizer = require('@prisma/client').__mock.authorizer;
     const module: TestingModule = await Test.createTestingModule({
       providers: [

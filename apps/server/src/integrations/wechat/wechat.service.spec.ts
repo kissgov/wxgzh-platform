@@ -19,7 +19,7 @@ jest.mock('ioredis', () => {
   return { Redis: RedisMock, __fake: fake, __RedisMock: RedisMock };
 });
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
 const ioredisMock = require('ioredis');
 
 const mockPrisma: any = {
