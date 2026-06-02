@@ -143,8 +143,12 @@ export type VoidResponse = z.infer<typeof VoidResponseSchema>;
 
 // ── Input schema ─────────────────────────────────────────────────────────
 
-/** GET /followers — 粉丝列表查询 (复用 PageQuerySchema + 扩展) */
+/** GET /followers — 粉丝列表查询 (复用 PageQuerySchema + 扩展)
+ *  - page_size 覆盖默认 50 以兼容 V1 FollowerListQueryDto 行为
+ *  - page / sort / order 沿用 PageQuerySchema 默认 (1 / undefined / 'desc')
+ */
 export const ListFollowersQuerySchema = PageQuerySchema.extend({
+  page_size: PageQuerySchema.shape.page_size.default(50),
   tagId: z.string().min(1).optional(),
   keyword: z.string().optional(),
   sex: z.enum(['1', '2']).optional(),
