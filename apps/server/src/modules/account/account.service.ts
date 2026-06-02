@@ -114,7 +114,7 @@ export class AccountService {
     if (!group) throw new NotFoundException('分组不存在');
 
     const updated = await this.prisma.accountGroup.update({
-      where: { id: groupId },
+      where: { id: groupId, tenantId },
       data: { ...dto },
     });
     return updated;
@@ -128,7 +128,7 @@ export class AccountService {
     if (!group) throw new NotFoundException('分组不存在');
 
     await this.prisma.accountGroup.update({
-      where: { id: groupId },
+      where: { id: groupId, tenantId },
       data: { deletedAt: new Date() },
     });
     return { deleted: true };

@@ -283,6 +283,26 @@ CREATE INDEX idx_materials_name_fts ON materials USING GIN(to_tsvector('simple',
 | encodingAesKey | AES-256-GCM | 同上 |
 | 用户密码 | bcrypt (cost=12) | — |
 
+### 5.3 S4 安全加固栈 (V2.0)
+
+**已完成 9 个 task**, 详见 [runbooks/security.md](runbooks/security.md):
+
+| 层 | 组件 | 路径 | 状态 |
+|----|------|------|------|
+| RBAC | `PERMISSIONS` 常量矩阵 + `@RequirePermission` 装饰器 | `common/security/permissions.ts` | ✅ |
+| Guard | `PermissionGuard` (AND 语义) + `TenantScopeGuard` | `common/security/permission.guard.ts` | ✅ |
+| 限流 | Redis 滑动窗口 `SlidingWindowLimiter` + `@RateLimit` 装饰器 | `common/ratelimit/sliding-window.ts` | ✅ |
+| 审计 | `AuditService` (写 audit_logs) + `AuditInterceptor` + `@AuditLog` | `common/security/audit.service.ts` | ✅ |
+| 加密 | `CryptoService` (AES-256-GCM, 兼容 CBC) | `common/security/crypto.service.ts` | ✅ |
+| 越权扫描 | `tenant-leak-scan.ts` (自研) | `apps/server/scripts/` | ✅ |
+| CI | `.github/workflows/security.yml` (3 job) | `.github/workflows/` | ✅ |
+
+**基线状态 (S4 完工):**
+- 38/38 单元测试全绿
+- 0 Lint errors
+- 越权扫描: 53 blocking + 100 warning (后续 sprint 月度修复)
+- pnpm audit: 10 high (lodash transitive, 后续 sprint 升级)
+
 ---
 
 ## 6. 部署架构

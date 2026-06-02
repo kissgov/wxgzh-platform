@@ -6,6 +6,7 @@ import { Public, CurrentUser } from '../../common/decorators/current-user.decora
 import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import { ZodResponse } from '../../common/decorators/zod-response.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RateLimit } from '../../common/ratelimit/rate-limit.guard';
 import { AuthService } from './auth.service';
 import {
   LoginInputSchema,
@@ -31,6 +32,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @RateLimit(5, 60_000, 'ip') // S4: 防登录爆破, 5 次/分钟/IP
   @ApiOperation({ summary: '用户登录' })
   @ZodResponse(LoginOutputSchema)
   async login(@ZodBody(LoginInputSchema) input: LoginInput) {

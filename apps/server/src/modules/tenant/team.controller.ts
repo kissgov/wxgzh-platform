@@ -8,6 +8,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, CurrentUser, RequireRoles, Public } from '../../common/decorators/current-user.decorator';
 import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import { ZodResponse } from '../../common/decorators/zod-response.decorator';
+import { RequirePermission } from '../../common/security/require-permission.decorator';
+import { PERMISSIONS } from '../../common/security/permissions';
 import { InvitationService } from './invitation.service';
 import { ApprovalService } from './approval.service';
 import { TeamActivityService } from './team-activity.service';
@@ -48,6 +50,7 @@ export class TeamController {
 
   @Post('invitations')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '发送邀请' })
   @ZodResponse(CreateInvitationOutputSchema)
   async createInvitation(
@@ -65,6 +68,7 @@ export class TeamController {
 
   @Get('invitations')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '邀请列表' })
   @ZodResponse(ListInvitationsOutputSchema)
   async listInvitations(@TenantId() tenantId: string) {
@@ -74,6 +78,7 @@ export class TeamController {
 
   @Delete('invitations/:id')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '取消邀请' })
   @ZodResponse(CancelInvitationOutputSchema)
   async cancelInvitation(
@@ -110,6 +115,7 @@ export class TeamController {
 
   @Get('approval-workflows')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '审批流列表' })
   @ZodResponse(ListWorkflowsOutputSchema)
   async listWorkflows(@TenantId() tenantId: string) {
@@ -119,6 +125,7 @@ export class TeamController {
 
   @Post('approval-workflows')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建审批流' })
   @ZodResponse(CreateWorkflowOutputSchema)
   async createWorkflow(
@@ -130,6 +137,7 @@ export class TeamController {
   }
 
   @Post('approval-requests')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '提交审批' })
   @ZodResponse(SubmitApprovalRequestOutputSchema)
   async submitRequest(
@@ -146,6 +154,7 @@ export class TeamController {
   }
 
   @Get('approval-requests')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '审批请求列表' })
   @ZodResponse(ListApprovalRequestsOutputSchema)
   async listRequests(
@@ -157,6 +166,7 @@ export class TeamController {
   }
 
   @Post('approval-requests/:id/approve')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '通过审批' })
   @ZodResponse(ApproveStepOutputSchema)
   async approveStep(
@@ -173,6 +183,7 @@ export class TeamController {
   }
 
   @Post('approval-requests/:id/reject')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '驳回审批' })
   @ZodResponse(RejectRequestOutputSchema)
   async rejectRequest(
@@ -191,6 +202,7 @@ export class TeamController {
   // ── 团队活动日志 ──────────────────────────────────────────────────
 
   @Get('activities')
+  @RequirePermission(PERMISSIONS.AUDIT_READ)
   @ApiOperation({ summary: '团队活动日志' })
   @ZodResponse(GetActivitiesOutputSchema)
   async getActivities(

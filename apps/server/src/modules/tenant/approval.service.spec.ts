@@ -161,7 +161,7 @@ describe('ApprovalService', () => {
       // 一次性 updateMany 所有 pending 步骤为 rejected
       expect(mockPrisma.approvalStep.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { requestId: 'req-1', status: 'pending' },
+          where: { requestId: 'req-1', status: 'pending', request: { tenantId: 't1' } },
           data: expect.objectContaining({
             approverId: 'u-app',
             status: 'rejected',
@@ -172,7 +172,7 @@ describe('ApprovalService', () => {
       // request 状态置为 rejected
       expect(mockPrisma.approvalRequest.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'req-1' },
+          where: { id: 'req-1', tenantId: 't1' },
           data: expect.objectContaining({ status: 'rejected' }),
         }),
       );

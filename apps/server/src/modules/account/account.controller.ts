@@ -9,6 +9,7 @@ import { TenantId, RequirePermission } from '../../common/decorators/current-use
 import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import { ZodQuery } from '../../common/decorators/zod-query.decorator';
 import { ZodResponse } from '../../common/decorators/zod-response.decorator';
+import { AuditLog } from '../../common/security/audit.interceptor';
 import { AccountService } from './account.service';
 import {
   AccountListQuerySchema,
@@ -87,6 +88,7 @@ export class AccountController {
 
   @Delete('groups/:groupId')
   @RequirePermission('account:delete')
+  @AuditLog('account.group.deleted', 'accountGroup')
   @ApiOperation({ summary: '删除分组' })
   @ZodResponse(DeleteGroupOutputSchema)
   async deleteGroup(
@@ -112,6 +114,7 @@ export class AccountController {
 
   @Delete('groups/:groupId/items/:authorizerId')
   @RequirePermission('account:update')
+  @AuditLog('account.group.item.removed', 'accountGroupItem')
   @ApiOperation({ summary: '从分组移除公众号' })
   @ZodResponse(RemoveFromGroupOutputSchema)
   async removeFromGroup(

@@ -169,7 +169,7 @@ describe('AccountService', () => {
 
       expect(result.deleted).toBe(true);
       expect(mockPrisma.accountGroup.update).toHaveBeenCalledWith({
-        where: { id: 'g1' },
+        where: { id: 'g1', tenantId: 't1' },
         data: { deletedAt: expect.any(Date) },
       });
     });

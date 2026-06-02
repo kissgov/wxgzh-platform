@@ -8,6 +8,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, CurrentUser, RequireRoles } from '../../common/decorators/current-user.decorator';
 import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import { ZodResponse } from '../../common/decorators/zod-response.decorator';
+import { RequirePermission } from '../../common/security/require-permission.decorator';
+import { PERMISSIONS } from '../../common/security/permissions';
 import { TenantService } from './tenant.service';
 import {
   CreateUserInputSchema,
@@ -43,6 +45,7 @@ export class TenantController {
 
   @Get('tenants')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '获取租户列表' })
   @ZodResponse(ListTenantsOutputSchema)
   async listTenants() {
@@ -54,6 +57,7 @@ export class TenantController {
 
   @Get('users')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '获取租户内用户列表' })
   @ZodResponse(ListUsersOutputSchema)
   async listUsers(@TenantId() tenantId: string) {
@@ -63,6 +67,7 @@ export class TenantController {
 
   @Post('users')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建用户' })
   @ZodResponse(CreateUserOutputSchema)
   async createUser(
@@ -79,13 +84,15 @@ export class TenantController {
 
   @Put('users/:userId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '更新用户' })
   @ZodResponse(UpdateUserOutputSchema)
   async updateUser(
+    @TenantId() tenantId: string,
     @Param('userId') userId: string,
     @ZodBody(UpdateUserInputSchema) input: UpdateUserInput,
   ) {
-    await this.tenantService.updateUser(userId, input);
+    await this.tenantService.updateUser(tenantId, userId, input);
     return { code: 0, message: '已更新', data: null };
   }
 
@@ -93,6 +100,7 @@ export class TenantController {
 
   @Get('roles')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '获取租户内角色列表' })
   @ZodResponse(ListRolesOutputSchema)
   async listRoles(@TenantId() tenantId: string) {
@@ -102,6 +110,7 @@ export class TenantController {
 
   @Post('roles')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建角色' })
   @ZodResponse(CreateRoleOutputSchema)
   async createRole(
@@ -114,6 +123,7 @@ export class TenantController {
 
   @Put('roles/:roleId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '更新角色' })
   @ZodResponse(UpdateRoleOutputSchema)
   async updateRole(
@@ -126,6 +136,7 @@ export class TenantController {
 
   @Delete('roles/:roleId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '删除角色' })
   @ZodResponse(DeleteRoleOutputSchema)
   async deleteRole(@Param('roleId') roleId: string) {
@@ -151,6 +162,7 @@ export class TenantController {
   }
 
   @Get('my-subscription')
+  @RequirePermission(PERMISSIONS.BILLING_READ)
   @ApiOperation({ summary: '当前租户的订阅信息' })
   @ZodResponse(GetMySubscriptionOutputSchema)
   async getMySubscription(@TenantId() tenantId: string) {
