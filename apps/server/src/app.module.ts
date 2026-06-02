@@ -16,7 +16,7 @@ import { buildLoggerOptions } from './common/observability/logger';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { TraceIdInterceptor } from './common/interceptors/trace-id.interceptor';
+// TraceIdInterceptor 由 main.ts 通过 useGlobalInterceptors 注册 (S3 升级版,包含 OTel + ALS)
 import { TenantThrottlerGuard } from './common/guards/tenant-throttler.guard';
 import { SubscriptionLimitGuard } from './common/guards/subscription-limit.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -88,7 +88,6 @@ import { AgentModule } from './modules/agent/agent.module';
     { provide: APP_GUARD, useClass: PermissionsGuard },        // ② 授权（校验 request.user.permissions）
     { provide: APP_GUARD, useClass: TenantThrottlerGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
-    { provide: APP_INTERCEPTOR, useClass: TraceIdInterceptor },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
   ],
 })

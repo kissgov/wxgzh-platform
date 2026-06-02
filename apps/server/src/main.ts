@@ -3,16 +3,22 @@
 // 必须在最顶部:把 zod 原型扩展出 .openapi() 方法,让 @ZodResponse metadata
 // 可序列化到 Swagger 文档。详细见 ./common/swagger/zod-to-swagger.ts。
 import './common/swagger/zod-to-swagger';
+// OTel SDK 必须在 import 业务代码前初始化 (S3)
+import { startOtel } from './common/observability/otel';
+startOtel();
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { TraceIdInterceptor } from './common/observability/trace.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));
+  // S3 trace 拦截器: 替换 V1 的 common/interceptors/trace-id.interceptor.ts
+  app.useGlobalInterceptors(new TraceIdInterceptor());
   const logger = new Logger('Bootstrap');
 
   // 安全头（X-Frame-Options, X-XSS-Protection, CSP 等）
