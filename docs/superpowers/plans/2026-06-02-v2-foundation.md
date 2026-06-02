@@ -13,14 +13,14 @@
 
 ## Sprint 拆分（6 sprint, 每个可独立发布）
 
-| Sprint | 主题 | 详细 plan | 关键产出 | 依赖 |
-|--------|------|----------|---------|------|
-| S1 | 测试底座 | [s1-testing.md](2026-06-02-v2-foundation-s1-testing.md) | 17 service 补单测 ≥ 60%, Jest+CI+coverage | — |
-| S2 | DTO/Zod 全量 ✅ | [s2-contracts.md](2026-06-02-v2-foundation-s2-contracts.md) | 15 controller 100% Zod, ESLint 强制, OpenAPI 同步 | S1 |
-| S3 | 可观测性 | [s3-observability.md](2026-06-02-v2-foundation-s3-observability.md) | OTel + Prometheus + pino + Grafana 4 看板 + 告警 | S1, S2 |
-| S4 | 安全加固 | [s4-security.md](2026-06-02-v2-foundation-s4-security.md) | RBAC + 越权扫描 + 限流 + 审计 + secret scan + 漏洞扫描 | S2, S3 |
-| S5 | CI + 部署回滚 | [s5-delivery.md](2026-06-02-v2-foundation-s5-delivery.md) | Blue/Green + migration 双向 + rollback 演练 + CI 全套 | S1, S4 |
-| S6 | 架构清理 + E2E | [s6-architecture-e2e.md](2026-06-02-v2-foundation-s6-architecture-e2e.md) | 抽象接口 + 循环依赖扫描 + 3 E2E 关键流 + MinIO 落地 | S1, S2 |
+| Sprint | 主题 | 详细 plan | 关键产出 | 依赖 | 状态 |
+|--------|------|----------|---------|------|------|
+| S1 | 测试底座 | [s1-testing.md](2026-06-02-v2-foundation-s1-testing.md) | 17 service 补单测 ≥ 60%, Jest+CI+coverage | — | ✅ DONE @ af07dcc |
+| S2 | DTO/Zod 全量 ✅ | [s2-contracts.md](2026-06-02-v2-foundation-s2-contracts.md) | 15 controller 100% Zod, ESLint 强制, OpenAPI 同步 | S1 | ✅ DONE @ 518c75f |
+| S3 | 可观测性 | [s3-observability.md](2026-06-02-v2-foundation-s3-observability.md) | OTel + Prometheus + pino + Grafana 4 看板 + 告警 | S1, S2 | ✅ DONE @ 9dea0f1 |
+| S4 | 安全加固 | [s4-security.md](2026-06-02-v2-foundation-s4-security.md) | RBAC + 越权扫描 + 限流 + 审计 + secret scan + 漏洞扫描 | S2, S3 | 🔜 NEXT |
+| S5 | CI + 部署回滚 | [s5-delivery.md](2026-06-02-v2-foundation-s5-delivery.md) | Blue/Green + migration 双向 + rollback 演练 + CI 全套 | S1, S4 | ⏳ PENDING |
+| S6 | 架构清理 + E2E | [s6-architecture-e2e.md](2026-06-02-v2-foundation-s6-architecture-e2e.md) | 抽象接口 + 循环依赖扫描 + 3 E2E 关键流 + MinIO 落地 | S1, S2 | ⏳ PENDING |
 
 **累计文件结构**（本路线图下要创建/修改的文件总览）：
 
