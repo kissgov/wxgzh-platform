@@ -6,9 +6,11 @@ import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bullmq';
+import { LoggerModule } from 'nestjs-pino';
 
 import { ConfigModule } from './config/config.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { buildLoggerOptions } from './common/observability/logger';
 
 // 基础设施
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -44,6 +46,8 @@ import { AgentModule } from './modules/agent/agent.module';
 
 @Module({
   imports: [
+    // 结构化日志 (pino) — 必须在最前,后续模块可注入 PinoLogger
+    LoggerModule.forRoot(buildLoggerOptions()),
     // 配置（Zod 校验，启动门禁）
     ConfigModule,
     // 数据库
