@@ -88,6 +88,8 @@ jobs:
           ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef'
       - name: Verify OpenAPI snapshot
         run: cd apps/server && pnpm test swagger-sync
+      - name: Observability smoke (OTel + pino + metrics)
+        run: cd apps/server && pnpm test observability
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
