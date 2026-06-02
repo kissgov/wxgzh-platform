@@ -86,6 +86,8 @@ jobs:
           REDIS_URL: 'redis://localhost:6379/1'
           JWT_SECRET: 'test-secret-do-not-use-in-production'
           ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef'
+      - name: Verify OpenAPI snapshot
+        run: cd apps/server && pnpm test swagger-sync
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
