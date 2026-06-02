@@ -13,11 +13,8 @@ paths = [
   '''docs/runbooks/.*''',
   '''docs/adrs/.*''',
 ]
-
-[[allowlist.regexes]]
-description = "test-encryption-key base64 placeholder"
-regex = '''dGVzdC1lbmNyeXB0aW9uLWtleS0zMmJ5dGVzLWFiY2Q='''
-
-[[allowlist.regexes]]
-description = "test-secret-do-not-use-in-production"
-regex = '''test-secret-do-not-use-in-production'''
+# gitleaks 8.x 要求 regexes 是 string array (非 object array)
+regexes = [
+  '''dGVzdC1lbmNyeXB0aW9uLWtleS0zMmJ5dGVzLWFiY2Q=''',
+  '''test-secret-do-not-use-in-production''',
+]
