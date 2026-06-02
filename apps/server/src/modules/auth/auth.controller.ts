@@ -4,6 +4,7 @@ import { Controller, Post, Put, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Public, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RateLimit } from '../../common/ratelimit/rate-limit.guard';
 import { AuthService } from './auth.service';
 
 @ApiTags('认证')
@@ -15,6 +16,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @RateLimit(5, 60_000, 'ip') // S4: 防登录爆破, 5 次/分钟/IP
   @ApiOperation({ summary: '用户登录' })
   async login(@Body() body: { email: string; password: string }) {
     const data = await this.authService.login(body.email, body.password);

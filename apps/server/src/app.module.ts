@@ -19,6 +19,7 @@ import { TenantThrottlerGuard } from './common/guards/tenant-throttler.guard';
 import { SubscriptionLimitGuard } from './common/guards/subscription-limit.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/security/permission.guard';
+import { RateLimitModule } from './common/ratelimit/rate-limit.module';
 
 // 外部集成
 import { WechatModule } from './integrations/wechat/wechat.module';
@@ -54,8 +55,9 @@ import { AgentModule } from './modules/agent/agent.module';
     BullModule.forRoot({
       connection: { url: process.env['REDIS_URL'] || 'redis://localhost:6379' },
     }),
-    // 限流（按租户+IP）
+    // 限流（按租户+IP, S4 加 sliding-window 精确控制）
     ThrottlerModule.forRoot([{ ttl: 1000, limit: 100 }]),
+    RateLimitModule, // S4: 装饰器驱动的 sliding window, 已在 auth.login 应用
     // 事件总线（模块间解耦）
     EventEmitterModule.forRoot({ wildcard: true, maxListeners: 20 }),
     // 定时任务
