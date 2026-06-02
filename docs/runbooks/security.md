@@ -132,14 +132,36 @@
 
 ## 8. CI 安全门禁
 
-| 门禁 | 工具 | 阻断级别 |
-|------|------|---------|
-| Lint | eslint | 0 error |
-| TypeCheck | tsc | 0 error |
-| Unit Test | jest | 0 fail |
-| Tenant-leak scan | tsx script | 0 blocking |
-| gitleaks | CI action | 0 leak |
-| pnpm audit | pnpm | high/critical = 0 |
+| 门禁 | 工具 | 阻断级别 | 状态 (S4 完工) |
+|------|------|---------|----------------|
+| Lint | eslint | 0 error | ✅ |
+| TypeCheck | tsc | 0 error | ✅ |
+| Unit Test | jest | 0 fail | ✅ 28/28 |
+| Tenant-leak scan | tsx script | 0 blocking | ⚠️ 53 blocking + 100 warning (基线) |
+| gitleaks | CI action | 0 leak | ✅ (本地无 leak) |
+| pnpm audit | pnpm | high/critical = 0 | ⚠️ 10 high (lodash transitive, 后续 sprint 修) |
+
+**`.github/workflows/security.yml` 包含 3 个独立 job:**
+- `gitleaks`: secret 扫描
+- `pnpm-audit`: 依赖漏洞 (高危/严重级 = 阻断)
+- `tenant-leak`: 越权静态扫描 (S4 自研)
+
+### 依赖漏洞基线 (S4 完工时)
+
+**已知 10 high + 8 moderate, 主要来源:**
+- `lodash@<4.17.24` (transitive via `@nestjs/swagger`) — 1 个 high: `_.template` Code Injection
+- 其余 transitive (axios, node-fetch 等老版本)
+
+**修复路径 (后续 sprint):**
+1. 升级 `@nestjs/swagger` 到 8.x (移除 lodash 依赖)
+2. 或在 `package.json` 加 `pnpm.overrides.lodash: ">=4.17.24"`
+3. 验证: `pnpm audit --prod --audit-level=high` 0 命中
+
+**临时缓解:**
+- 锁定生产部署只暴露 `dist/main` 入口, 不引入 dev deps
+- 监控 Dependabot 每周 PR, 优先升级 high
+
+---
 
 **Task 8 完成后**, 上述 6 项必须在 `pnpm test` + 6 个 CI job 全绿。
 
