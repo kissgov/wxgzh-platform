@@ -24,6 +24,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
     let code: number = ErrorCodes.INTERNAL_ERROR;
     let message: string = ErrorMessages[ErrorCodes.INTERNAL_ERROR]!;
+    let fieldErrors: unknown = undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -33,6 +34,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const r = res as Record<string, unknown>;
         message = (r['message'] as string) || exception.message;
         code = (r['code'] as number) || status;
+        // 透出 field-level errors(Zod / class-validator),仅当非 undefined
+        if (r['errors'] !== undefined) {
+          fieldErrors = r['errors'];
+        }
       } else {
         message = exception.message;
       }
@@ -50,11 +55,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const traceId =
       (request.headers['x-trace-id'] as string) || uuid();
 
-    response.status(status).json({
+    const responseBody: Record<string, unknown> = {
       code,
       message: Array.isArray(message) ? message.join('; ') : message,
       data: null,
       trace_id: traceId,
-    });
+    };
+    if (fieldErrors !== undefined) {
+      responseBody['errors'] = fieldErrors;
+    }
+
+    response.status(status).json(responseBody);
   }
 }

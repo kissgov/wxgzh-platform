@@ -2,6 +2,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../llm/llm.service';
+import { businessEventsTotal } from '../../common/observability/metrics';
 
 const BUILTIN_SKILLS = [
   { slug: 'content-writer', name: '内容创作', category: 'content', icon: 'EditOutlined',
@@ -68,6 +69,7 @@ export class AgentService {
     const agent = await this.prisma.agent.create({
       data: { tenantId, name: dto.name, description: dto.description, systemPrompt: dto.systemPrompt, config: dto.config as any },
     });
+    businessEventsTotal.inc({ event: 'agent_created', tenant_id: tenantId });
     if (dto.skillIds?.length) {
       for (const skillId of dto.skillIds) {
         await this.prisma.agentSkill.create({ data: { agentId: agent.id, skillId, priority: 0 } });

@@ -1,0 +1,16 @@
+{
+  "root": false,
+  "extends": "../../.eslintrc.json",
+  "plugins": ["local-rules"],
+  "rules": {
+    "local-rules/no-any-input": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.dto.ts", "**/integrations/**/*.controller.ts"],
+      "rules": {
+        "local-rules/no-any-input": "off"
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "title": "HTTP 请求",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "QPS",
+      "targets": [{ "expr": "sum(rate(http_requests_total[1m]))" }]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "P95 延迟",
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))" }]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "5xx 错误率",
+      "targets": [{ "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))" }]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Top 10 慢路由 (P95)",
+      "targets": [{ "expr": "topk(10, histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m]))))" }]
+    },
+    {
+      "id": 5,
+      "type": "piechart",
+      "title": "状态码分布",
+      "targets": [{ "expr": "sum by (status) (rate(http_requests_total[5m]))" }]
+    }
+  ]
+}

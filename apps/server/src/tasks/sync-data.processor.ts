@@ -5,6 +5,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { WechatService } from '../integrations/wechat/wechat.service';
+import { recordQueueJob } from './metrics-wrapper';
 
 // ── 日期工具 ───────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ export class SyncDataProcessor extends WorkerHost {
 
   async process(job: Job<SyncDataJob>): Promise<void> {
     const { taskType, tenantId, authorizerId } = job.data;
+    const start = process.hrtime.bigint();
 
     const syncTask = await this.prisma.syncTask.create({
       data: {
@@ -63,8 +65,10 @@ export class SyncDataProcessor extends WorkerHost {
         where: { id: syncTask.id },
         data: { status: 'success', finishedAt: new Date() },
       });
+      recordQueueJob('sync-data', 'completed', start);
       this.logger.log(`Sync OK: ${taskType} for ${authorizerId}`);
     } catch (err) {
+      recordQueueJob('sync-data', 'failed', start);
       this.logger.error(`Sync FAIL: ${taskType} for ${authorizerId}: ${(err as Error).message}`);
       await this.prisma.syncTask.update({
         where: { id: syncTask.id },

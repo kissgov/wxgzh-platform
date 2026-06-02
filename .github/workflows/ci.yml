@@ -11,7 +11,8 @@ on:
 
 env:
   NODE_VERSION: '22'
-  PNPM_VERSION: '9'
+  # pnpm 版本由根 package.json 的 `packageManager` 字段(pnpm@11.4.0)统一控制
+  # pnpm/action-setup@v4 自动读取,本地 + CI 一致
 
 jobs:
   # ── Lint ────────────────────────────────────────────────────────────
@@ -21,8 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -37,8 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -71,8 +68,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -81,13 +76,15 @@ jobs:
       - run: pnpm prisma:generate
         env:
           DATABASE_URL: 'postgresql://wxgzh:wxgzh123@localhost:5432/wxgzh_test'
-      - name: Run tests with coverage
-        run: pnpm test:cov
+      - name: Run tests with coverage (enforces ADR-001 thresholds)
+        run: pnpm test:ci
         env:
           DATABASE_URL: 'postgresql://wxgzh:wxgzh123@localhost:5432/wxgzh_test'
           REDIS_URL: 'redis://localhost:6379/1'
           JWT_SECRET: 'test-secret-do-not-use-in-production'
           ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef'
+      - name: Observability smoke (OTel + pino + metrics)
+        run: cd apps/server && pnpm test observability
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -106,8 +103,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -126,8 +121,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
