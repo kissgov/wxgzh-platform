@@ -1,11 +1,13 @@
-# E2E 测试流水线 (V2.0 S5 框架, S6 填充 test:e2e 实现)
+# E2E 测试流水线 (V2.0 S6 落地 test:e2e 实现)
 # ============================================================================
-# 触发: push 到 main / 手动 dispatch
-# 现状: job 框架就绪, 等 S6 (auth.e2e / wechat-auth.e2e / broadcast.e2e) 落地后即可用。
+# 触发: push 到 main / PR / 手动 dispatch
+# 依赖: postgres + redis service containers
 name: E2E
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch: {}
 
@@ -45,6 +47,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - name: Build @wxgzh/shared (consumed by server at runtime)
+        run: pnpm --filter @wxgzh/shared build
       - run: pnpm prisma:generate
         env:
           DATABASE_URL: 'postgresql://wxgzh:wxgzh123@localhost:5432/wxgzh_test'
