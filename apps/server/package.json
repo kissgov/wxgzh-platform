@@ -8,7 +8,10 @@
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "eslint src/",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "jest --passWithNoTests",
+    "test:ci": "jest --ci --passWithNoTests",
+    "test:cov": "jest --coverage --passWithNoTests",
     "test:e2e": "jest --config ./test/jest-e2e.json --passWithNoTests"
   },
   "dependencies": {
