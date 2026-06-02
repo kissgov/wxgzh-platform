@@ -1,5 +1,8 @@
 // NestJS 应用入口
 // ============================================================================
+// 必须在最顶部:把 zod 原型扩展出 .openapi() 方法,让 @ZodResponse metadata
+// 可序列化到 Swagger 文档。详细见 ./common/swagger/zod-to-swagger.ts。
+import './common/swagger/zod-to-swagger';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';

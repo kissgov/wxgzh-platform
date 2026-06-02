@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, RequirePermission } from '../../common/decorators/current-user.decorator';
 import { ZodQuery } from '../../common/decorators/zod-query.decorator';
 import { ZodResponse } from '../../common/decorators/zod-response.decorator';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import { MaterialService } from './material.service';
 import {
   ListMaterialsQuerySchema,
