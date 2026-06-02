@@ -3,12 +3,12 @@
  *
  * - InputSchema 严格对应 TenantController method 入参 (4 个 body 入参)
  * - OutputSchema 对应 TenantService 实际返回结构 (service 是 source of truth)
- * - 复用 _shared 中的 TenantInfoSchema / UserInfoSchema
+ * - 复用 _shared 中的 TenantInfoSchema
  *
  * 字段命名: camelCase (V1 风格)
  */
 import { z } from 'zod';
-import { UserInfoSchema, TenantInfoSchema } from './_shared';
+import { TenantInfoSchema } from './_shared';
 
 // ── 通用子 schema ────────────────────────────────────────────────────────
 
