@@ -13,13 +13,24 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { TraceIdInterceptor } from './common/observability/trace.interceptor';
+import { MetricsInterceptor } from './common/middleware/metrics.interceptor';
+import { metricsRegistry } from './common/observability/metrics';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));
-  // S3 trace 拦截器: 替换 V1 的 common/interceptors/trace-id.interceptor.ts
-  app.useGlobalInterceptors(new TraceIdInterceptor());
+  // S3 拦截器: trace_id 注入 + Prometheus HTTP metrics
+  app.useGlobalInterceptors(new TraceIdInterceptor(), new MetricsInterceptor());
   const logger = new Logger('Bootstrap');
+
+  // 暴露 /metrics 端点 (S3 Prometheus scrape) — 必须在 setGlobalPrefix 之前
+  // (避免被加上 /api/v1 前缀,Prometheus 习惯走根路径)
+  const httpAdapter = app.getHttpAdapter().getInstance();
+  httpAdapter.get('/metrics', async (_req: any, res: any) => {
+    res.set('Content-Type', metricsRegistry.contentType);
+    res.send(await metricsRegistry.metrics());
+  });
+  httpAdapter.get('/healthz', (_req: any, res: any) => res.status(200).json({ ok: true }));
 
   // 安全头（X-Frame-Options, X-XSS-Protection, CSP 等）
   app.use(helmet());
