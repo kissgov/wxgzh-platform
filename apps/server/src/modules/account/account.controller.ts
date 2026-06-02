@@ -6,6 +6,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, RequirePermission } from '../../common/decorators/current-user.decorator';
+import { AuditLog } from '../../common/security/audit.interceptor';
 import { AccountService } from './account.service';
 import {
   AccountListQueryDto, CreateGroupDto, UpdateGroupDto, AddAccountsToGroupDto,
@@ -66,6 +67,7 @@ export class AccountController {
 
   @Delete('groups/:groupId')
   @RequirePermission('account:delete')
+  @AuditLog('account.group.deleted', 'accountGroup')
   @ApiOperation({ summary: '删除分组' })
   async deleteGroup(
     @TenantId() tenantId: string,
@@ -89,6 +91,7 @@ export class AccountController {
 
   @Delete('groups/:groupId/items/:authorizerId')
   @RequirePermission('account:update')
+  @AuditLog('account.group.item.removed', 'accountGroupItem')
   @ApiOperation({ summary: '从分组移除公众号' })
   async removeFromGroup(
     @TenantId() tenantId: string,

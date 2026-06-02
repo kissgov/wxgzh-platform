@@ -19,6 +19,8 @@ import { TenantThrottlerGuard } from './common/guards/tenant-throttler.guard';
 import { SubscriptionLimitGuard } from './common/guards/subscription-limit.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionGuard } from './common/security/permission.guard';
+import { AuditService } from './common/security/audit.service';
+import { AuditInterceptor } from './common/security/audit.interceptor';
 import { RateLimitModule } from './common/ratelimit/rate-limit.module';
 
 // 外部集成
@@ -88,6 +90,8 @@ import { AgentModule } from './modules/agent/agent.module';
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: TraceIdInterceptor },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
+    AuditService,                                                // S4: 审计日志服务
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },   // S4: 审计拦截器 (按 @AuditLog 标记)
   ],
 })
 export class AppModule implements NestModule {
