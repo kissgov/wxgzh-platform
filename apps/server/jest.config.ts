@@ -32,6 +32,9 @@ const config: Config = {
   testPathIgnorePatterns: ['/node_modules/', '/dist/', '/test/e2e/'],
   testEnvironment: 'node',
   testTimeout: 30000,
+  // forceExit: 强退避开 BullMQ/Redis mock 未关闭的 open handles 导致 jest 不退出
+  // (本地 + CI 一致)。技术债:逐 spec 加 afterAll(() => bullQueue.close()) 后可去掉。
+  forceExit: true,
   moduleNameMapper: {
     '^@wxgzh/shared$': '<rootDir>/../../packages/shared/src',
   },
