@@ -8,27 +8,12 @@
  * 字段命名:camelCase (V1 风格);snake_case 仅出现在 wire 协议字段 (access_token / refresh_token / expires_in)
  */
 import { z } from 'zod';
-
-// ── 通用子 schema ──────────────────────────────────────────────────────
-
-/** 当前用户信息 (login / register / me) */
-export const UserInfoSchema = z.object({
-  id: z.string().min(1),
-  name: z.string(),
-  email: z.string().email(),
-  avatar: z.string().nullable(),
-  roles: z.array(z.string()),
-  permissions: z.array(z.string()),
-});
-export type UserInfo = z.infer<typeof UserInfoSchema>;
-
-/** 租户简略信息 (login / register) */
-export const TenantInfoSchema = z.object({
-  id: z.string().min(1),
-  name: z.string(),
-  slug: z.string(),
-});
-export type TenantInfo = z.infer<typeof TenantInfoSchema>;
+import {
+  UserInfoSchema,
+  TenantInfoSchema,
+  type UserInfo,
+  type TenantInfo,
+} from './_shared';
 
 // ── 4 个 Input schema (对应 4 个 controller method) ────────────────────
 
@@ -100,3 +85,6 @@ export const RefreshOutputSchema = z.object({
   expires_in: z.literal(7200),
 });
 export type RefreshOutput = z.infer<typeof RefreshOutputSchema>;
+
+// ── 共享子 schema re-export(向后兼容,controller 可继续从本文件 import) ─────
+export { UserInfoSchema, TenantInfoSchema, type UserInfo, type TenantInfo } from './_shared';
