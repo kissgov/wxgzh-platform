@@ -20,6 +20,9 @@ const mockPrisma: any = {
     findMany: jest.fn(),
     count: jest.fn(),
   },
+  follower: {
+    findFirst: jest.fn(),
+  },
 };
 
 const baseConfig = {
@@ -174,6 +177,131 @@ describe('LlmService', () => {
 
       // 不应调上游
       expect(mockedAxios.post).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Claude 分支 ──────────────────────────────────────────────────
+
+  describe('chat (Claude provider)', () => {
+    it('should send x-api-key header and parse content[0].text for claude', async () => {
+      mockPrisma.llmConfig.findUnique.mockResolvedValue({ ...baseConfig, provider: 'claude' });
+      mockPrisma.llmUsageLog.count.mockResolvedValue(0);
+      mockPrisma.llmUsageLog.create.mockResolvedValue({});
+      mockedAxios.post.mockResolvedValue({
+        data: {
+          content: [{ text: 'reply from claude' }],
+          usage: { input_tokens: 7, output_tokens: 11 },
+        },
+      });
+
+      const r = await service.chat('t1', {
+        scene: 'x',
+        messages: [
+          { role: 'system', content: 'be brief' },
+          { role: 'user', content: 'hi' },
+        ],
+      });
+
+      expect(r.content).toBe('reply from claude');
+      expect(r.tokensIn).toBe(7);
+      expect(r.tokensOut).toBe(11);
+
+      const [url, body, opts] = mockedAxios.post.mock.calls[0]! as [string, { model: string; messages: unknown[]; system: string }, { headers: Record<string, string> }];
+      expect(url).toBe('https://api.anthropic.com/v1/messages');
+      expect(body.model).toBe('claude-sonnet-4-6');
+      expect(body.system).toBe('be brief');
+      // system message 应被剥离到顶层
+      expect(body.messages).toEqual([{ role: 'user', content: 'hi' }]);
+      expect(opts.headers['x-api-key']).toBe('sk-test');
+      expect(opts.headers['anthropic-version']).toBe('2023-06-01');
+    });
+  });
+
+  // ── 配置读写 ──────────────────────────────────────────────────────
+
+  describe('getConfig / upsertConfig', () => {
+    it('getConfig should mask apiKey to last 4 chars', async () => {
+      mockPrisma.llmConfig.findUnique.mockResolvedValue({ ...baseConfig, apiKey: 'sk-abc12345XYZ' });
+      const r = await service.getConfig('t1');
+      expect(r.apiKey).toBe('****5XYZ');
+    });
+
+    it('getConfig should return null when no config', async () => {
+      mockPrisma.llmConfig.findUnique.mockResolvedValue(null);
+      expect(await service.getConfig('t-no')).toBeNull();
+    });
+
+    it('getConfig should return null apiKey when apiKey is null', async () => {
+      mockPrisma.llmConfig.findUnique.mockResolvedValue({ ...baseConfig, apiKey: null });
+      const r = await service.getConfig('t1');
+      expect(r.apiKey).toBeNull();
+    });
+
+    it('upsertConfig should clean empty strings to null and apply defaults', async () => {
+      mockPrisma.llmConfig.upsert.mockResolvedValue({});
+      await service.upsertConfig('t1', {
+        provider: '', apiKey: 'sk-x', apiUrl: '', model: '',
+        temperature: undefined, maxTokens: 0, systemPrompt: '', dailyLimit: 0, status: '',
+      });
+      const call = mockPrisma.llmConfig.upsert.mock.calls[0][0];
+      expect(call.create.tenantId).toBe('t1');
+      expect(call.create.provider).toBe('openai');        // 默认
+      expect(call.create.apiUrl).toBeNull();                // '' → null
+      expect(call.create.model).toBeNull();
+      expect(call.create.systemPrompt).toBeNull();
+      expect(call.create.temperature).toBe(0.7);
+      expect(call.create.maxTokens).toBe(4096);
+      expect(call.create.dailyLimit).toBe(100);
+      expect(call.create.status).toBe('active');
+      expect(call.update.provider).toBe('openai');
+      expect(call.update.apiKey).toBe('sk-x');
+    });
+  });
+
+  // ── 自动回复 ──────────────────────────────────────────────────────
+
+  describe('autoReply', () => {
+    it('should return AI reply truncated to 200 chars', async () => {
+      mockPrisma.follower.findFirst.mockResolvedValue(null);   // 默认 '用户'
+      mockPrisma.llmConfig.findUnique.mockResolvedValue(baseConfig);
+      mockPrisma.llmUsageLog.count.mockResolvedValue(0);
+      mockPrisma.llmUsageLog.create.mockResolvedValue({});
+      const long = 'a'.repeat(300);
+      mockedAxios.post.mockResolvedValue({
+        data: { choices: [{ message: { content: long } }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
+      });
+      const r = await service.autoReply('t1', 'auth-1', 'hi');
+      expect(r).toBe('a'.repeat(200));
+    });
+
+    it('should return fallback message when chat throws', async () => {
+      mockPrisma.follower.findFirst.mockResolvedValue(null);
+      mockPrisma.llmConfig.findUnique.mockResolvedValue(null);
+      const r = await service.autoReply('t1', 'auth-1', 'hi');
+      expect(r).toBe('感谢您的留言，我们会尽快回复您。');
+    });
+  });
+
+  // ── 周报 ──────────────────────────────────────────────────────────
+
+  describe('getUsageLogs', () => {
+    it('should return empty when tenant has no config', async () => {
+      mockPrisma.llmConfig.findUnique.mockResolvedValue(null);
+      const r = await service.getUsageLogs('t-no', 1, 20);
+      expect(r).toEqual({ list: [], total: 0 });
+    });
+
+    it('should paginate when config exists', async () => {
+      mockPrisma.llmConfig.findUnique.mockResolvedValue(baseConfig);
+      mockPrisma.llmUsageLog.findMany.mockResolvedValue([{ id: 'l1' }]);
+      mockPrisma.llmUsageLog.count.mockResolvedValue(1);
+      const r = await service.getUsageLogs('t1', 2, 5);
+      expect(r.total).toBe(1);
+      expect(r.page).toBe(2);
+      expect(r.page_size).toBe(5);
+      const w = mockPrisma.llmUsageLog.findMany.mock.calls[0][0];
+      expect(w.skip).toBe(5);  // (2-1)*5
+      expect(w.take).toBe(5);
     });
   });
 });

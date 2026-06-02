@@ -9,6 +9,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
+    "test:ci": "turbo test:ci",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "prisma:generate": "prisma generate",
