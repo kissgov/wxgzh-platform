@@ -18,7 +18,7 @@ import { TraceIdInterceptor } from './common/interceptors/trace-id.interceptor';
 import { TenantThrottlerGuard } from './common/guards/tenant-throttler.guard';
 import { SubscriptionLimitGuard } from './common/guards/subscription-limit.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { PermissionsGuard } from './common/guards/permissions.guard';
+import { PermissionGuard } from './common/security/permission.guard';
 
 // 外部集成
 import { WechatModule } from './integrations/wechat/wechat.module';
@@ -81,7 +81,7 @@ import { AgentModule } from './modules/agent/agent.module';
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },            // ① 认证（填充 request.user）
     { provide: APP_GUARD, useClass: SubscriptionLimitGuard },
-    { provide: APP_GUARD, useClass: PermissionsGuard },        // ② 授权（校验 request.user.permissions）
+    { provide: APP_GUARD, useClass: PermissionGuard },          // ② 授权（S4 升级版, 集成 PERMISSIONS 常量 + AND 语义）
     { provide: APP_GUARD, useClass: TenantThrottlerGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: TraceIdInterceptor },
