@@ -52,9 +52,10 @@ jobs:
         env:
           DATABASE_URL: 'postgresql://wxgzh:wxgzh123@localhost:5432/wxgzh_test'
       - name: Run migrations + seed test data
+        # prisma schema 在 monorepo root (./prisma/schema.prisma)
+        # 不能 cd apps/server, 必须从 root 跑 prisma 命令
         run: |
-          cd apps/server
-          npx prisma migrate deploy
+          npx prisma migrate deploy --schema=./prisma/schema.prisma
           pnpm db:seed:test
         env:
           DATABASE_URL: 'postgresql://wxgzh:wxgzh123@localhost:5432/wxgzh_test'
