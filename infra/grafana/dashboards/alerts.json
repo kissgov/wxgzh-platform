@@ -1,0 +1,35 @@
+{
+  "title": "告警状态",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "当前触发告警",
+      "targets": [
+        { "expr": "ALERTS{alertstate=\"firing\"}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Critical 告警数",
+      "targets": [{ "expr": "sum(ALERTS{alertstate=\"firing\", severity=\"critical\"})" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Warning 告警数",
+      "targets": [{ "expr": "sum(ALERTS{alertstate=\"firing\", severity=\"warning\"})" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "告警变化趋势 (1h)",
+      "targets": [
+        { "expr": "sum(ALERTS{alertstate=\"firing\"})", "legendFormat": "firing" },
+        { "expr": "sum(ALERTS{alertstate=\"pending\"})", "legendFormat": "pending" }
+      ]
+    }
+  ]
+}

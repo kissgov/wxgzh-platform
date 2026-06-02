@@ -1,0 +1,37 @@
+{
+  "title": "队列 (BullMQ)",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "队列吞吐 (completed vs failed)",
+      "targets": [
+        { "expr": "sum by (queue) (rate(queue_jobs_total{status=\"completed\"}[5m]))", "legendFormat": "{{queue}} completed" },
+        { "expr": "sum by (queue) (rate(queue_jobs_total{status=\"failed\"}[5m]))", "legendFormat": "{{queue}} failed" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "队列 P95 任务耗时",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, queue) (rate(queue_job_duration_seconds_bucket[5m])))", "legendFormat": "{{queue}} p95" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "失败任务数 (5m)",
+      "targets": [{ "expr": "sum(increase(queue_jobs_total{status=\"failed\"}[5m]))" }]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "按队列失败率",
+      "targets": [
+        { "expr": "sum by (queue) (rate(queue_jobs_total{status=\"failed\"}[15m])) / sum by (queue) (rate(queue_jobs_total[15m]))" }
+      ]
+    }
+  ]
+}
