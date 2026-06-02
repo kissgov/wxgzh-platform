@@ -1,6 +1,7 @@
 // LLM Service — 多 Provider 抽象 + 限额 + 日志
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { businessEventsTotal } from '../../common/observability/metrics';
 import axios from 'axios';
 
 interface LlmRequest { scene: string; messages: Array<{ role: string; content: string }>; }
@@ -60,6 +61,7 @@ export class LlmService {
 
       const durationMs = Date.now() - startedAt;
       await this.logUsage(config.id, tenantId, req.scene, req.messages[req.messages.length - 1]?.content || '', content, model, tokensIn, tokensOut, durationMs, 'success');
+      businessEventsTotal.inc({ event: 'llm_chat', tenant_id: tenantId });
       this.logger.log(`LLM call: provider=${config.provider} model=${model} tokens=${tokensIn}/${tokensOut} ms=${durationMs}`);
       return { content, tokensIn, tokensOut, durationMs };
     } catch (err: any) {

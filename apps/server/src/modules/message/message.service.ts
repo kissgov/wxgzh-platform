@@ -2,6 +2,7 @@
 // ============================================================================
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { businessEventsTotal } from '../../common/observability/metrics';
 import type { MessageLogQueryDto, CreateAutoReplyDto, CreateBroadcastDto } from './message.dto';
 
 @Injectable()
@@ -148,7 +149,10 @@ export class MessageService {
       const match = rule.keywordReplies.find(
         (kr: any) => kr.matchType === 'exact' && kr.keyword === keyword,
       );
-      if (match) return rule;
+      if (match) {
+        businessEventsTotal.inc({ event: 'auto_reply_triggered', tenant_id: rule.tenantId });
+        return rule;
+      }
     }
 
     // 2. 模糊匹配
@@ -156,7 +160,10 @@ export class MessageService {
       const match = rule.keywordReplies.find(
         (kr: any) => kr.matchType === 'fuzzy' && keyword.includes(kr.keyword),
       );
-      if (match) return rule;
+      if (match) {
+        businessEventsTotal.inc({ event: 'auto_reply_triggered', tenant_id: rule.tenantId });
+        return rule;
+      }
     }
 
     // 3. 正则匹配
@@ -169,7 +176,10 @@ export class MessageService {
           return false;
         }
       });
-      if (match) return rule;
+      if (match) {
+        businessEventsTotal.inc({ event: 'auto_reply_triggered', tenant_id: rule.tenantId });
+        return rule;
+      }
     }
 
     // 4. 默认回复
@@ -182,7 +192,10 @@ export class MessageService {
       },
       include: { replyContents: true },
     });
-    if (defaultRule) return defaultRule;
+    if (defaultRule) {
+      businessEventsTotal.inc({ event: 'auto_reply_triggered', tenant_id: defaultRule.tenantId });
+      return defaultRule;
+    }
 
     // 5. AI 智能回复兜底
     return null; // 由 Controller 层调用 AI 回复
@@ -227,10 +240,12 @@ export class MessageService {
 
   /** 发送群发消息（标记为 pending，由 Worker 异步执行实际发送） */
   async sendBroadcast(id: string) {
-    return this.prisma.broadcastMessage.update({
+    const updated = await this.prisma.broadcastMessage.update({
       where: { id },
       data: { status: 'pending', sentAt: new Date() },
     });
+    businessEventsTotal.inc({ event: 'message_sent', tenant_id: updated.tenantId });
+    return updated;
   }
 
   /** 查询发送进度 */

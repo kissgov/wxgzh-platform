@@ -1,16 +1,42 @@
 // Content Controller — 内容创作 API
 // ============================================================================
 import {
-  Controller, Get, Post, Put, Delete, Param, Query, Body, UseGuards,
+  Controller, Get, Post, Put, Delete, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, CurrentUser, RequirePermission } from '../../common/decorators/current-user.decorator';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
+import { ZodQuery } from '../../common/decorators/zod-query.decorator';
+import { ZodResponse } from '../../common/decorators/zod-response.decorator';
 import { ContentService } from './content.service';
 import {
-  ArticleListQueryDto, CreateArticleDto, UpdateArticleDto,
-  CreateCategoryDto, CreateTemplateDto, AiGenerateDto,
-} from './content.dto';
+  ListArticlesQuerySchema,
+  CreateArticleInputSchema,
+  UpdateArticleInputSchema,
+  CreateCategoryInputSchema,
+  CreateTemplateInputSchema,
+  AiGenerateInputSchema,
+  ListArticlesOutputSchema,
+  GetArticleOutputSchema,
+  CreateArticleOutputSchema,
+  UpdateArticleOutputSchema,
+  RestoreRevisionOutputSchema,
+  SubmitReviewOutputSchema,
+  ListCategoriesOutputSchema,
+  CreateCategoryOutputSchema,
+  ListTemplatesOutputSchema,
+  CreateTemplateOutputSchema,
+  ApplyTemplateOutputSchema,
+  AiGenerateOutputSchema,
+  DeleteOutputSchema,
+  type ListArticlesQuery,
+  type CreateArticleInput,
+  type UpdateArticleInput,
+  type CreateCategoryInput,
+  type CreateTemplateInput,
+  type AiGenerateInput,
+} from '../../common/contracts/content.contract';
 
 @ApiTags('内容创作')
 @ApiBearerAuth()
@@ -24,18 +50,20 @@ export class ContentController {
   @Get()
   @RequirePermission('follower:read')  // 复用 follower:read 权限（Sprint 2 不新增权限）
   @ApiOperation({ summary: '文章列表' })
+  @ZodResponse(ListArticlesOutputSchema)
   async list(
     @TenantId() tenantId: string,
     @Query('authorizerId') authorizerId: string,
-    @Query() query: ArticleListQueryDto,
+    @ZodQuery(ListArticlesQuerySchema) q: ListArticlesQuery,
   ) {
     if (!authorizerId) return { code: 10001, message: 'authorizerId 必填', data: null };
-    const data = await this.contentService.getArticles(tenantId, authorizerId, query);
+    const data = await this.contentService.getArticles(tenantId, authorizerId, q);
     return { code: 0, message: '成功', data };
   }
 
   @Get(':id')
   @ApiOperation({ summary: '文章详情' })
+  @ZodResponse(GetArticleOutputSchema)
   async detail(@TenantId() tenantId: string, @Param('id') id: string) {
     const data = await this.contentService.getArticle(tenantId, id);
     return { code: 0, message: '成功', data };
@@ -43,24 +71,26 @@ export class ContentController {
 
   @Post()
   @ApiOperation({ summary: '创建文章' })
+  @ZodResponse(CreateArticleOutputSchema)
   async create(
     @TenantId() tenantId: string,
     @Query('authorizerId') authorizerId: string,
-    @Body() dto: CreateArticleDto,
+    @ZodBody(CreateArticleInputSchema) input: CreateArticleInput,
   ) {
     if (!authorizerId) return { code: 10001, message: 'authorizerId 必填', data: null };
-    const data = await this.contentService.createArticle(tenantId, authorizerId, dto);
+    const data = await this.contentService.createArticle(tenantId, authorizerId, input);
     return { code: 0, message: '文章已创建', data };
   }
 
   @Put(':id')
   @ApiOperation({ summary: '编辑文章' })
+  @ZodResponse(UpdateArticleOutputSchema)
   async update(
     @TenantId() tenantId: string,
     @Param('id') id: string,
-    @Body() dto: UpdateArticleDto,
+    @ZodBody(UpdateArticleInputSchema) input: UpdateArticleInput,
   ) {
-    const data = await this.contentService.updateArticle(tenantId, id, dto);
+    const data = await this.contentService.updateArticle(tenantId, id, input);
     return { code: 0, message: '已保存', data };
   }
 
@@ -75,6 +105,7 @@ export class ContentController {
 
   @Post(':id/revisions/:revId/restore')
   @ApiOperation({ summary: '恢复到指定版本' })
+  @ZodResponse(RestoreRevisionOutputSchema)
   async restore(
     @TenantId() tenantId: string,
     @Param('id') id: string,
@@ -88,6 +119,7 @@ export class ContentController {
 
   @Post(':id/submit-review')
   @ApiOperation({ summary: '提交审批' })
+  @ZodResponse(SubmitReviewOutputSchema)
   async submitReview(
     @TenantId() tenantId: string,
     @Param('id') id: string,
@@ -105,6 +137,7 @@ export class ContentController {
 
   @Get('categories/list')
   @ApiOperation({ summary: '文章分类列表' })
+  @ZodResponse(ListCategoriesOutputSchema)
   async categories(@TenantId() tenantId: string) {
     const data = await this.contentService.getCategories(tenantId);
     return { code: 0, message: '成功', data };
@@ -112,8 +145,12 @@ export class ContentController {
 
   @Post('categories')
   @ApiOperation({ summary: '创建分类' })
-  async createCategory(@TenantId() tenantId: string, @Body() dto: CreateCategoryDto) {
-    const data = await this.contentService.createCategory(tenantId, dto);
+  @ZodResponse(CreateCategoryOutputSchema)
+  async createCategory(
+    @TenantId() tenantId: string,
+    @ZodBody(CreateCategoryInputSchema) input: CreateCategoryInput,
+  ) {
+    const data = await this.contentService.createCategory(tenantId, input);
     return { code: 0, message: '分类已创建', data };
   }
 
@@ -128,6 +165,7 @@ export class ContentController {
 
   @Get('templates/list')
   @ApiOperation({ summary: '模板列表' })
+  @ZodResponse(ListTemplatesOutputSchema)
   async templates(@TenantId() tenantId: string, @Query('category') category?: string) {
     const data = await this.contentService.getTemplates(tenantId, category);
     return { code: 0, message: '成功', data };
@@ -135,13 +173,18 @@ export class ContentController {
 
   @Post('templates')
   @ApiOperation({ summary: '创建模板' })
-  async createTemplate(@TenantId() tenantId: string, @Body() dto: CreateTemplateDto) {
-    const data = await this.contentService.createTemplate(tenantId, dto);
+  @ZodResponse(CreateTemplateOutputSchema)
+  async createTemplate(
+    @TenantId() tenantId: string,
+    @ZodBody(CreateTemplateInputSchema) input: CreateTemplateInput,
+  ) {
+    const data = await this.contentService.createTemplate(tenantId, input);
     return { code: 0, message: '模板已保存', data };
   }
 
   @Post('templates/:templateId/apply')
   @ApiOperation({ summary: '应用模板创建文章' })
+  @ZodResponse(ApplyTemplateOutputSchema)
   async applyTemplate(
     @TenantId() tenantId: string,
     @Query('authorizerId') authorizerId: string,
@@ -163,12 +206,16 @@ export class ContentController {
 
   @Post('ai/generate')
   @ApiOperation({ summary: 'AI 生成内容' })
-  async aiGenerate(@TenantId() tenantId: string, @Body() dto: AiGenerateDto) {
+  @ZodResponse(AiGenerateOutputSchema)
+  async aiGenerate(
+    @TenantId() tenantId: string,
+    @ZodBody(AiGenerateInputSchema) input: AiGenerateInput,
+  ) {
     return {
       code: 0,
       message: 'AI 服务将在后续版本上线',
       data: {
-        content: `【AI 生成预览】\n\n主题：${dto.prompt}\n类型：${dto.type}\n\nAI 写作功能将在集成 Claude API 后启用。当前版本请手动编辑文章内容。`,
+        content: `【AI 生成预览】\n\n主题：${input.prompt}\n类型：${input.type}\n\nAI 写作功能将在集成 Claude API 后启用。当前版本请手动编辑文章内容。`,
       },
     };
   }

@@ -5,6 +5,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { WechatService } from '../integrations/wechat/wechat.service';
+import { recordQueueJob } from './metrics-wrapper';
 
 @Processor('token-refresh')
 export class TokenRefreshProcessor extends WorkerHost {
@@ -19,10 +20,13 @@ export class TokenRefreshProcessor extends WorkerHost {
 
   async process(job: Job<{ authorizerId: string }>): Promise<void> {
     const { authorizerId } = job.data;
+    const start = process.hrtime.bigint();
     try {
       await this.wechatService.refreshAuthorizerToken(authorizerId);
+      recordQueueJob('token-refresh', 'completed', start);
       this.logger.log(`Token refreshed for authorizer: ${authorizerId}`);
     } catch (err) {
+      recordQueueJob('token-refresh', 'failed', start);
       this.logger.error(`Token refresh failed for ${authorizerId}: ${(err as Error).message}`);
       throw err; // BullMQ 将自动重试
     }

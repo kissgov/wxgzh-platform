@@ -1,0 +1,29 @@
+groups:
+  - name: wxgzh-alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "HTTP 5xx > 5% (5m 滚动窗口)" }
+      - alert: SlowP95Latency
+        expr: histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "P95 > 1s on {{ $labels.route }}" }
+      - alert: TokenRefreshFailure
+        expr: rate(queue_jobs_total{queue="token-refresh",status="failed"}[15m]) > 0.1
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "Token 刷新失败率 > 10% (15m)" }
+      - alert: WechatApiRateLimited
+        expr: rate(wechat_api_calls_total{result="rate_limited"}[5m]) > 1
+        for: 5m
+        labels: { severity: warning }
+        annotations: { summary: "微信 API 触发限频 (>1次/秒)" }
+      - alert: QueueBacklog
+        expr: bullmq_waiting_count > 1000
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "队列积压 > 1000 (10m)" }

@@ -4,6 +4,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { recordQueueJob } from './metrics-wrapper';
 
 @Processor('tag-rule')
 export class TagRuleProcessor extends WorkerHost {
@@ -15,6 +16,18 @@ export class TagRuleProcessor extends WorkerHost {
 
   async process(job: Job<{ ruleId: string }>): Promise<{ affected: number; tagged: number }> {
     const { ruleId } = job.data;
+    const start = process.hrtime.bigint();
+    try {
+      const result = await this.executeTagRule(ruleId, start);
+      recordQueueJob('tag-rule', 'completed', start);
+      return result;
+    } catch (err) {
+      recordQueueJob('tag-rule', 'failed', start);
+      throw err;
+    }
+  }
+
+  private async executeTagRule(ruleId: string, start: bigint) {
     const rule = await this.prisma.tagRule.findUnique({
       where: { id: ruleId },
       include: { targetTag: true },

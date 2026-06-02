@@ -8,8 +8,21 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, RequirePermission } from '../../common/decorators/current-user.decorator';
+import { ZodQuery } from '../../common/decorators/zod-query.decorator';
+import { ZodResponse } from '../../common/decorators/zod-response.decorator';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import { MaterialService } from './material.service';
-import { MaterialListQueryDto, UpdateMaterialDto } from './material.dto';
+import {
+  ListMaterialsQuerySchema,
+  ListMaterialsOutputSchema,
+  ListMaterialCategoriesOutputSchema,
+  GetMaterialDetailOutputSchema,
+  UploadMaterialOutputSchema,
+  UpdateMaterialInputSchema,
+  UpdateMaterialOutputSchema,
+  type ListMaterialsQuery,
+  type UpdateMaterialInput,
+} from '../../common/contracts/material.contract';
 
 @ApiTags('素材管理')
 @ApiBearerAuth()
@@ -21,14 +34,19 @@ export class MaterialController {
   @Get()
   @RequirePermission('material:read')
   @ApiOperation({ summary: '素材列表' })
-  async list(@TenantId() tenantId: string, @Query() query: MaterialListQueryDto) {
-    const data = await this.materialService.getMaterials(tenantId, query);
+  @ZodResponse(ListMaterialsOutputSchema)
+  async list(
+    @TenantId() tenantId: string,
+    @ZodQuery(ListMaterialsQuerySchema) q: ListMaterialsQuery,
+  ) {
+    const data = await this.materialService.getMaterials(tenantId, q);
     return { code: 0, message: '成功', data };
   }
 
   @Get('categories')
   @RequirePermission('material:read')
   @ApiOperation({ summary: '素材分类列表' })
+  @ZodResponse(ListMaterialCategoriesOutputSchema)
   async categories(@TenantId() tenantId: string) {
     const data = await this.materialService.getCategories(tenantId);
     return { code: 0, message: '成功', data };
@@ -37,6 +55,7 @@ export class MaterialController {
   @Get(':materialId')
   @RequirePermission('material:read')
   @ApiOperation({ summary: '素材详情' })
+  @ZodResponse(GetMaterialDetailOutputSchema)
   async detail(
     @TenantId() tenantId: string,
     @Param('materialId') materialId: string,
@@ -50,6 +69,7 @@ export class MaterialController {
   @ApiOperation({ summary: '上传素材' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
+  @ZodResponse(UploadMaterialOutputSchema)
   async upload(
     @TenantId() tenantId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -88,12 +108,13 @@ export class MaterialController {
   @Put(':materialId')
   @RequirePermission('material:update')
   @ApiOperation({ summary: '编辑素材信息' })
+  @ZodResponse(UpdateMaterialOutputSchema)
   async update(
     @TenantId() tenantId: string,
     @Param('materialId') materialId: string,
-    @Body() dto: UpdateMaterialDto,
+    @ZodBody(UpdateMaterialInputSchema) input: UpdateMaterialInput,
   ) {
-    const data = await this.materialService.updateMaterial(materialId, tenantId, dto);
+    const data = await this.materialService.updateMaterial(materialId, tenantId, input);
     return { code: 0, message: '已更新', data };
   }
 

@@ -6,15 +6,17 @@ import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bullmq';
+import { LoggerModule } from 'nestjs-pino';
 
 import { ConfigModule } from './config/config.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { buildLoggerOptions } from './common/observability/logger';
 
 // 基础设施
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { TraceIdInterceptor } from './common/interceptors/trace-id.interceptor';
+// TraceIdInterceptor 由 main.ts 通过 useGlobalInterceptors 注册 (S3 升级版,包含 OTel + ALS)
 import { TenantThrottlerGuard } from './common/guards/tenant-throttler.guard';
 import { SubscriptionLimitGuard } from './common/guards/subscription-limit.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -47,6 +49,8 @@ import { AgentModule } from './modules/agent/agent.module';
 
 @Module({
   imports: [
+    // 结构化日志 (pino) — 必须在最前,后续模块可注入 PinoLogger
+    LoggerModule.forRoot(buildLoggerOptions()),
     // 配置（Zod 校验，启动门禁）
     ConfigModule,
     // 数据库
@@ -88,7 +92,6 @@ import { AgentModule } from './modules/agent/agent.module';
     { provide: APP_GUARD, useClass: PermissionGuard },          // ② 授权（S4 升级版, 集成 PERMISSIONS 常量 + AND 语义）
     { provide: APP_GUARD, useClass: TenantThrottlerGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
-    { provide: APP_INTERCEPTOR, useClass: TraceIdInterceptor },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
     AuditService,                                                // S4: 审计日志服务
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },   // S4: 审计拦截器 (按 @AuditLog 标记)

@@ -1,0 +1,53 @@
+# 告警回滚 (V2.0 S5) — workflow_dispatch 触发
+# ============================================================================
+# 用法: 收到 P0/P1 告警时, 由值班人在 GitHub UI 手动触发回滚。
+#
+# 前置 secrets (在 repo Settings → Secrets 配置):
+#   - PROD_HOST:  生产服务器 IP/域名
+#   - PROD_USER:  ssh 用户 (建议用 deploy, 不给 root)
+#   - PROD_SSH_KEY: ssh 私钥
+#
+# 触发流程:
+#   1. GitHub Actions → 选 "Rollback on Alert" → Run workflow
+#   2. 填 reason (必填, 写进 /var/log/wxgzh/rollback.log)
+#   3. ssh 到生产, 跑 ./scripts/rollback.sh
+#   4. 记录日志
+name: Rollback on Alert
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '回滚原因 (必填, 写进 rollback.log)'
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    name: SSH Rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: SSH to prod and rollback
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          command_timeout: 3m
+          script: |
+            set -e
+            cd /www/wwwroot/wxgzh
+
+            # 写日志 (含触发原因 + 时间)
+            TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            REASON="${{ inputs.reason }}"
+            mkdir -p /var/log/wxgzh
+            echo "[$TS] manual-rollback: $REASON" | tee -a /var/log/wxgzh/rollback.log
+
+            # 执行回滚
+            ./scripts/rollback.sh
+
+            # 回滚后, 看一眼健康状态
+            pm2 ls
+            echo "✅ 手动回滚完成, reason=$REASON"

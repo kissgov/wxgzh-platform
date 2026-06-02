@@ -6,10 +6,40 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, RequirePermission } from '../../common/decorators/current-user.decorator';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
+import { ZodQuery } from '../../common/decorators/zod-query.decorator';
+import { ZodResponse } from '../../common/decorators/zod-response.decorator';
 import { FollowerService } from './follower.service';
 import {
-  FollowerListQueryDto, CreateTagDto, BatchTagDto, CreateTagRuleDto, UpdateTagRuleDto,
-} from './follower.dto';
+  ListFollowersQuerySchema,
+  CreateTagInputSchema,
+  UpdateTagInputSchema,
+  BatchTagInputSchema,
+  BatchUntagInputSchema,
+  CreateTagRuleInputSchema,
+  UpdateTagRuleInputSchema,
+  ListFollowersOutputSchema,
+  GetFollowerDetailOutputSchema,
+  ListTagsOutputSchema,
+  CreateTagOutputSchema,
+  UpdateTagOutputSchema,
+  BatchTagOutputSchema,
+  BatchUntagOutputSchema,
+  ListTagRulesOutputSchema,
+  CreateTagRuleOutputSchema,
+  UpdateTagRuleOutputSchema,
+  ExecuteTagRuleOutputSchema,
+  GetBlacklistOutputSchema,
+  AddToBlacklistOutputSchema,
+  GetPortraitOutputSchema,
+  type ListFollowersQuery,
+  type CreateTagInput,
+  type UpdateTagInput,
+  type BatchTagInput,
+  type BatchUntagInput,
+  type CreateTagRuleInput,
+  type UpdateTagRuleInput,
+} from '../../common/contracts/follower.contract';
 
 @ApiTags('粉丝管理')
 @ApiBearerAuth()
@@ -23,19 +53,21 @@ export class FollowerController {
   @Get()
   @RequirePermission('follower:read')
   @ApiOperation({ summary: '粉丝列表（支持多维度筛选）' })
+  @ZodResponse(ListFollowersOutputSchema)
   async list(
     @TenantId() tenantId: string,
     @Query('authorizerId') authorizerId: string,
-    @Query() query: FollowerListQueryDto,
+    @ZodQuery(ListFollowersQuerySchema) q: ListFollowersQuery,
   ) {
     if (!authorizerId) return { code: 10001, message: 'authorizerId 必填', data: null };
-    const data = await this.followerService.getFollowers(tenantId, authorizerId, query);
+    const data = await this.followerService.getFollowers(tenantId, authorizerId, q);
     return { code: 0, message: '成功', data };
   }
 
   @Get(':followerId')
   @RequirePermission('follower:read')
   @ApiOperation({ summary: '粉丝详情' })
+  @ZodResponse(GetFollowerDetailOutputSchema)
   async detail(
     @TenantId() tenantId: string,
     @Param('followerId') followerId: string,
@@ -49,6 +81,7 @@ export class FollowerController {
   @Get('tags/list')
   @RequirePermission('follower:read')
   @ApiOperation({ summary: '标签列表' })
+  @ZodResponse(ListTagsOutputSchema)
   async listTags(@Query('authorizerId') authorizerId: string) {
     const data = await this.followerService.getTags(authorizerId);
     return { code: 0, message: '成功', data };
@@ -57,24 +90,26 @@ export class FollowerController {
   @Post('tags')
   @RequirePermission('follower:tag')
   @ApiOperation({ summary: '创建标签' })
+  @ZodResponse(CreateTagOutputSchema)
   async createTag(
     @TenantId() tenantId: string,
     @Query('authorizerId') authorizerId: string,
-    @Body() dto: CreateTagDto,
+    @ZodBody(CreateTagInputSchema) input: CreateTagInput,
   ) {
-    const data = await this.followerService.createTag(authorizerId, tenantId, dto);
+    const data = await this.followerService.createTag(authorizerId, tenantId, input);
     return { code: 0, message: '标签已创建', data };
   }
 
   @Put('tags/:tagId')
   @RequirePermission('follower:tag')
   @ApiOperation({ summary: '编辑标签' })
+  @ZodResponse(UpdateTagOutputSchema)
   async updateTag(
     @TenantId() tenantId: string,
     @Param('tagId') tagId: string,
-    @Body() dto: Partial<CreateTagDto>,
+    @ZodBody(UpdateTagInputSchema) input: UpdateTagInput,
   ) {
-    const data = await this.followerService.updateTag(tagId, tenantId, dto);
+    const data = await this.followerService.updateTag(tagId, tenantId, input);
     return { code: 0, message: '标签已更新', data };
   }
 
@@ -92,22 +127,24 @@ export class FollowerController {
   @Post('tags/batch')
   @RequirePermission('follower:tag')
   @ApiOperation({ summary: '批量打标签' })
+  @ZodResponse(BatchTagOutputSchema)
   async batchTag(
     @TenantId() tenantId: string,
-    @Body() dto: BatchTagDto,
+    @ZodBody(BatchTagInputSchema) input: BatchTagInput,
   ) {
-    const data = await this.followerService.batchTag(tenantId, dto);
+    const data = await this.followerService.batchTag(tenantId, input);
     return { code: 0, message: `成功 ${data.success}/${data.total}`, data };
   }
 
   @Delete('tags/batch')
   @RequirePermission('follower:tag')
   @ApiOperation({ summary: '批量移除标签' })
+  @ZodResponse(BatchUntagOutputSchema)
   async batchUntag(
     @TenantId() tenantId: string,
-    @Body() dto: BatchTagDto,
+    @ZodBody(BatchUntagInputSchema) input: BatchUntagInput,
   ) {
-    const data = await this.followerService.batchUntag(tenantId, dto);
+    const data = await this.followerService.batchUntag(tenantId, input);
     return { code: 0, message: `已移除 ${data.removed}`, data };
   }
 
@@ -116,6 +153,7 @@ export class FollowerController {
   @Get('tags/rules')
   @RequirePermission('follower:read')
   @ApiOperation({ summary: '标签规则列表' })
+  @ZodResponse(ListTagRulesOutputSchema)
   async listTagRules(@Query('authorizerId') authorizerId: string) {
     const data = await this.followerService.getTagRules(authorizerId);
     return { code: 0, message: '成功', data };
@@ -124,11 +162,16 @@ export class FollowerController {
   @Post('tags/rules')
   @RequirePermission('follower:tag')
   @ApiOperation({ summary: '创建标签规则' })
+  @ZodResponse(CreateTagRuleOutputSchema)
   async createTagRule(
     @TenantId() tenantId: string,
     @Query('authorizerId') authorizerId: string,
-    @Body() dto: CreateTagRuleDto,
+    @ZodBody(CreateTagRuleInputSchema) input: CreateTagRuleInput,
   ) {
+    const dto = {
+      ...input,
+      conditions: input.conditions.map((c) => ({ ...c, value: c.value ?? null })),
+    };
     const data = await this.followerService.createTagRule(tenantId, authorizerId, dto);
     return { code: 0, message: '规则已创建', data };
   }
@@ -136,7 +179,15 @@ export class FollowerController {
   @Put('tags/rules/:ruleId')
   @RequirePermission('follower:tag')
   @ApiOperation({ summary: '编辑标签规则' })
-  async updateTagRule(@Param('ruleId') ruleId: string, @Body() dto: UpdateTagRuleDto) {
+  @ZodResponse(UpdateTagRuleOutputSchema)
+  async updateTagRule(
+    @Param('ruleId') ruleId: string,
+    @ZodBody(UpdateTagRuleInputSchema) input: UpdateTagRuleInput,
+  ) {
+    const dto = {
+      ...input,
+      conditions: input.conditions?.map((c) => ({ ...c, value: c.value ?? null })),
+    };
     const data = await this.followerService.updateTagRule(ruleId, dto);
     return { code: 0, message: '规则已更新', data };
   }
@@ -152,6 +203,7 @@ export class FollowerController {
   @Post('tags/rules/:ruleId/execute')
   @RequirePermission('follower:tag')
   @ApiOperation({ summary: '执行标签规则' })
+  @ZodResponse(ExecuteTagRuleOutputSchema)
   async executeTagRule(@Param('ruleId') ruleId: string) {
     const data = await this.followerService.executeTagRule(ruleId);
     return { code: 0, message: '规则执行完成', data };
@@ -162,6 +214,7 @@ export class FollowerController {
   @Get('blacklist')
   @RequirePermission('follower:blacklist')
   @ApiOperation({ summary: '黑名单列表' })
+  @ZodResponse(GetBlacklistOutputSchema)
   async blacklist(
     @Query('authorizerId') authorizerId: string,
     @Query('page') page?: number,
@@ -173,6 +226,7 @@ export class FollowerController {
   @Post(':followerId/blacklist')
   @RequirePermission('follower:blacklist')
   @ApiOperation({ summary: '加入黑名单' })
+  @ZodResponse(AddToBlacklistOutputSchema)
   async block(
     @Query('authorizerId') authorizerId: string,
     @Param('followerId') followerId: string,
@@ -198,6 +252,7 @@ export class FollowerController {
   @Get('portrait/stats')
   @RequirePermission('follower:read')
   @ApiOperation({ summary: '粉丝画像统计' })
+  @ZodResponse(GetPortraitOutputSchema)
   async portrait(@Query('authorizerId') authorizerId: string) {
     const data = await this.followerService.getPortrait(authorizerId);
     return { code: 0, message: '成功', data };

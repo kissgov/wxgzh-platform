@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # OTel Prometheus exporter (NodeSDK metrics: process_*, nodejs_*, http server metrics)
+  - job_name: 'wxgzh-api'
+    static_configs:
+      - targets: ['host.docker.internal:9464']
+    metrics_path: /metrics
+  # App 业务 metrics (HTTP/微信/队列/业务事件)
+  - job_name: 'wxgzh-api-http'
+    static_configs:
+      - targets: ['host.docker.internal:3000']
+    metrics_path: /metrics
+
+rule_files:
+  - alerts.yml
