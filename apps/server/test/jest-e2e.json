@@ -7,7 +7,7 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
-    "^@wxgzh/shared$": "<rootDir>/../../packages/shared/src"
+    "^@wxgzh/shared$": "<rootDir>/../../../packages/shared/src"
   },
   "testTimeout": 30000,
   "setupFiles": ["<rootDir>/e2e/helpers/setup-env.ts"]
