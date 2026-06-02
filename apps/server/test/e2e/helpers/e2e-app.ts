@@ -19,6 +19,8 @@ export async function getE2EApp(): Promise<INestApplication> {
     })
     .compile();
   app = moduleRef.createNestApplication();
+  // 必须与 main.ts:39 setGlobalPrefix 保持一致, 否则 E2E 调 /api/v1/* 全 404
+  app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.init();
   return app;
