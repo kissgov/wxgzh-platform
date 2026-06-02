@@ -293,28 +293,28 @@ describe('TenantService', () => {
 
   describe('updateUser', () => {
     it('should update name + status when only those provided', async () => {
-      await service.updateUser('u1', { name: 'New', status: 'inactive' });
+      await service.updateUser('t1', 'u1', { name: 'New', status: 'inactive' });
       expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'u1' }, data: { name: 'New' } }),
+        expect.objectContaining({ where: { id: 'u1', tenantId: 't1' }, data: { name: 'New' } }),
       );
       expect(mockPrisma.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'u1' }, data: { status: 'inactive' } }),
+        expect.objectContaining({ where: { id: 'u1', tenantId: 't1' }, data: { status: 'inactive' } }),
       );
     });
 
     it('should reset userRole rows when roleIds provided', async () => {
-      await service.updateUser('u1', { roleIds: ['r1'] });
+      await service.updateUser('t1', 'u1', { roleIds: ['r1'] });
       expect(mockPrisma.userRole.deleteMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId: 'u1' } }),
+        expect.objectContaining({ where: { userId: 'u1', user: { tenantId: 't1' } } }),
       );
       expect(mockPrisma.userRole.create).toHaveBeenCalled();
     });
 
     it('should rewrite userAuthorizer rows scoped to user tenant', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({ tenantId: 't1' });
-      await service.updateUser('u1', { authorizerIds: ['a1', 'a2'] });
+      await service.updateUser('t1', 'u1', { authorizerIds: ['a1', 'a2'] });
       expect(mockPrisma.userAuthorizer.deleteMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId: 'u1' } }),
+        expect.objectContaining({ where: { userId: 'u1', user: { tenantId: 't1' } } }),
       );
       expect(mockPrisma.userAuthorizer.create).toHaveBeenCalledTimes(2);
       expect(mockPrisma.userAuthorizer.create.mock.calls[0][0].data.tenantId).toBe('t1');
@@ -322,7 +322,7 @@ describe('TenantService', () => {
 
     it('should skip userAuthorizer update when user missing', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
-      await service.updateUser('u-missing', { authorizerIds: ['a1'] });
+      await service.updateUser('t1', 'u-missing', { authorizerIds: ['a1'] });
       expect(mockPrisma.userAuthorizer.create).not.toHaveBeenCalled();
     });
   });

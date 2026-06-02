@@ -88,10 +88,11 @@ export class TenantController {
   @ApiOperation({ summary: '更新用户' })
   @ZodResponse(UpdateUserOutputSchema)
   async updateUser(
+    @TenantId() tenantId: string,
     @Param('userId') userId: string,
     @ZodBody(UpdateUserInputSchema) input: UpdateUserInput,
   ) {
-    await this.tenantService.updateUser(userId, input);
+    await this.tenantService.updateUser(tenantId, userId, input);
     return { code: 0, message: '已更新', data: null };
   }
 

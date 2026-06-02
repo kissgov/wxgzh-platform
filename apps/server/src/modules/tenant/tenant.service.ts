@@ -97,6 +97,7 @@ export class TenantService {
   }
 
   async updateUser(
+    tenantId: string,
     userId: string,
     dto: { name?: string; status?: string; roleIds?: string[]; authorizerIds?: string[] },
   ) {
