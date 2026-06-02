@@ -35,18 +35,41 @@ export const Factories = {
     });
   },
 
+  async componentApp(
+    overrides: Partial<{
+      appId: string;
+      appSecret: string;
+      verifyTicket: string;
+    }> = {},
+  ) {
+    return getPrisma().componentApp.create({
+      data: {
+        appId: overrides.appId ?? `comp-${Date.now()}`,
+        appSecret: overrides.appSecret ?? 'sec_xxx',
+        token: 'token_xxx',
+        encodingAesKey: 'aek_xxx',
+        verifyTicket: overrides.verifyTicket ?? 'enc_ticket',
+      },
+    });
+  },
+
   async authorizer(
     tenantId: string,
-    overrides: Partial<{ appId: string; status: string }> = {},
+    componentAppId: string,
+    overrides: Partial<{ appId: string; status: string; nickName: string }> = {},
   ) {
     return getPrisma().authorizer.create({
       data: {
         tenantId,
+        componentAppId,
         appId: overrides.appId ?? `wx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        appType: 2, // 服务号
+        nickName: overrides.nickName ?? 'Test MP',
         refreshToken: 'mock_refresh_token',
         status: overrides.status ?? 'authorized',
         accessToken: 'mock_access',
         tokenExpireAt: new Date(Date.now() + 7200 * 1000),
+        funcInfo: [],
       },
     });
   },
@@ -54,34 +77,28 @@ export const Factories = {
   async follower(
     tenantId: string,
     authorizerId: string,
-    overrides: Partial<{ openid: string; status: string }> = {},
+    overrides: Partial<{ openid: string; subscribe: boolean }> = {},
   ) {
     return getPrisma().follower.create({
       data: {
         tenantId,
         authorizerId,
         openid: overrides.openid ?? `o-${Math.random().toString(36).slice(2, 10)}`,
-        status: overrides.status ?? 'subscribed',
+        subscribe: overrides.subscribe ?? true,
       },
     });
   },
 
-  async tag(tenantId: string, overrides: Partial<{ name: string }> = {}) {
-    return getPrisma().tag.create({
+  async tag(
+    tenantId: string,
+    authorizerId: string,
+    overrides: Partial<{ name: string }> = {},
+  ) {
+    return getPrisma().followerTag.create({
       data: {
         tenantId,
+        authorizerId,
         name: overrides.name ?? `tag-${Date.now()}`,
-      },
-    });
-  },
-
-  async componentApp(overrides: Partial<{ appId: string; appSecret: string; verifyTicket: string }> = {}) {
-    return getPrisma().componentApp.create({
-      data: {
-        appId: overrides.appId ?? `comp-${Date.now()}`,
-        appSecret: overrides.appSecret ?? 'sec_xxx',
-        verifyTicket: overrides.verifyTicket ?? 'enc_ticket',
-        name: 'Test Component',
       },
     });
   },
