@@ -2,6 +2,7 @@
 // ============================================================================
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { businessEventsTotal } from '../../common/observability/metrics';
 import type {
   ArticleListQueryDto, CreateArticleDto, UpdateArticleDto,
   CreateCategoryDto, CreateTemplateDto,
@@ -77,6 +78,7 @@ export class ContentService {
         digest: article.digest,
       },
     });
+    businessEventsTotal.inc({ event: 'article_created', tenant_id: tenantId });
     this.logger.log(`Article created: ${article.title}`);
     return article;
   }
@@ -168,6 +170,7 @@ export class ContentService {
       data: { tenantId, userId: submitterId, action: 'article.submitted', targetType: 'article', targetId: articleId } as any,
     });
 
+    businessEventsTotal.inc({ event: 'article_submitted', tenant_id: tenantId });
     return updated;
   }
 

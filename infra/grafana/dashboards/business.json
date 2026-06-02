@@ -1,0 +1,40 @@
+{
+  "title": "业务指标",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "业务事件 (5m rate)",
+      "targets": [
+        { "expr": "sum by (event) (rate(business_events_total[5m]))", "legendFormat": "{{event}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "授权公众号新增 (1h)",
+      "targets": [{ "expr": "sum(increase(business_events_total{event=\"authorizer_added\"}[1h]))" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "群发消息数 (1h)",
+      "targets": [{ "expr": "sum(increase(business_events_total{event=\"message_sent\"}[1h]))" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "LLM 调用数 (1h)",
+      "targets": [{ "expr": "sum(increase(business_events_total{event=\"llm_chat\"}[1h]))" }]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Top 10 租户 (按 LLM 调用)",
+      "targets": [
+        { "expr": "topk(10, sum by (tenant_id) (increase(business_events_total{event=\"llm_chat\"}[24h])))" }
+      ]
+    }
+  ]
+}

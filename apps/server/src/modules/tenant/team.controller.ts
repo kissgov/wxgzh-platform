@@ -6,9 +6,34 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, CurrentUser, RequireRoles, Public } from '../../common/decorators/current-user.decorator';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
+import { ZodResponse } from '../../common/decorators/zod-response.decorator';
+import { RequirePermission } from '../../common/security/require-permission.decorator';
+import { PERMISSIONS } from '../../common/security/permissions';
 import { InvitationService } from './invitation.service';
 import { ApprovalService } from './approval.service';
 import { TeamActivityService } from './team-activity.service';
+import {
+  CreateInvitationInputSchema,
+  AcceptInvitationInputSchema,
+  CreateWorkflowInputSchema,
+  SubmitApprovalRequestInputSchema,
+  CreateInvitationOutputSchema,
+  ListInvitationsOutputSchema,
+  CancelInvitationOutputSchema,
+  AcceptInvitationOutputSchema,
+  ListWorkflowsOutputSchema,
+  CreateWorkflowOutputSchema,
+  SubmitApprovalRequestOutputSchema,
+  ListApprovalRequestsOutputSchema,
+  ApproveStepOutputSchema,
+  RejectRequestOutputSchema,
+  GetActivitiesOutputSchema,
+  type CreateInvitationInput,
+  type AcceptInvitationInput,
+  type CreateWorkflowInput,
+  type SubmitApprovalRequestInput,
+} from '../../common/contracts/team.contract';
 
 @ApiTags('团队协作')
 @ApiBearerAuth()
@@ -25,14 +50,16 @@ export class TeamController {
 
   @Post('invitations')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '发送邀请' })
+  @ZodResponse(CreateInvitationOutputSchema)
   async createInvitation(
     @TenantId() tenantId: string,
     @CurrentUser('sub') inviterId: string,
-    @Body() body: { email: string; roleIds?: string[]; authorizerIds?: string[] },
+    @ZodBody(CreateInvitationInputSchema) input: CreateInvitationInput,
   ) {
     try {
-      const data = await this.invitationService.createInvitation(tenantId, inviterId, body);
+      const data = await this.invitationService.createInvitation(tenantId, inviterId, input);
       return { code: 0, message: '邀请已发送', data };
     } catch (err: any) {
       return { code: 10005, message: err.message, data: null };
@@ -41,7 +68,9 @@ export class TeamController {
 
   @Get('invitations')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '邀请列表' })
+  @ZodResponse(ListInvitationsOutputSchema)
   async listInvitations(@TenantId() tenantId: string) {
     const data = await this.invitationService.getInvitations(tenantId);
     return { code: 0, message: '成功', data };
@@ -49,14 +78,16 @@ export class TeamController {
 
   @Delete('invitations/:id')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '取消邀请' })
+  @ZodResponse(CancelInvitationOutputSchema)
   async cancelInvitation(
     @TenantId() tenantId: string,
     @Param('id') id: string,
   ) {
     try {
-      await this.invitationService.cancelInvitation(tenantId, id);
-      return { code: 0, message: '邀请已取消', data: null };
+      const data = await this.invitationService.cancelInvitation(tenantId, id);
+      return { code: 0, message: '邀请已取消', data };
     } catch (err: any) {
       return { code: 10005, message: err.message, data: null };
     }
@@ -67,12 +98,13 @@ export class TeamController {
   @Public()
   @Post('invitations/:token/accept')
   @ApiOperation({ summary: '接受邀请（无需登录）' })
+  @ZodResponse(AcceptInvitationOutputSchema)
   async acceptInvitation(
     @Param('token') token: string,
-    @Body() body: { name: string; password: string },
+    @ZodBody(AcceptInvitationInputSchema) input: AcceptInvitationInput,
   ) {
     try {
-      const data = await this.invitationService.acceptInvitation(token, body);
+      const data = await this.invitationService.acceptInvitation(token, input);
       return { code: 0, message: '加入成功，请登录', data };
     } catch (err: any) {
       return { code: 10005, message: err.message, data: null };
@@ -83,7 +115,9 @@ export class TeamController {
 
   @Get('approval-workflows')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '审批流列表' })
+  @ZodResponse(ListWorkflowsOutputSchema)
   async listWorkflows(@TenantId() tenantId: string) {
     const data = await this.approvalService.listWorkflows(tenantId);
     return { code: 0, message: '成功', data };
@@ -91,24 +125,28 @@ export class TeamController {
 
   @Post('approval-workflows')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建审批流' })
+  @ZodResponse(CreateWorkflowOutputSchema)
   async createWorkflow(
     @TenantId() tenantId: string,
-    @Body() body: any,
+    @ZodBody(CreateWorkflowInputSchema) input: CreateWorkflowInput,
   ) {
-    const data = await this.approvalService.createWorkflow(tenantId, body);
+    const data = await this.approvalService.createWorkflow(tenantId, input);
     return { code: 0, message: '审批流已创建', data };
   }
 
   @Post('approval-requests')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '提交审批' })
+  @ZodResponse(SubmitApprovalRequestOutputSchema)
   async submitRequest(
     @TenantId() tenantId: string,
     @CurrentUser('sub') submitterId: string,
-    @Body() body: { resourceType: string; resourceId: string; workflowId?: string },
+    @ZodBody(SubmitApprovalRequestInputSchema) input: SubmitApprovalRequestInput,
   ) {
     try {
-      const data = await this.approvalService.submitRequest(tenantId, submitterId, body);
+      const data = await this.approvalService.submitRequest(tenantId, submitterId, input);
       return { code: 0, message: '已提交审批', data };
     } catch (err: any) {
       return { code: 10005, message: err.message, data: null };
@@ -116,7 +154,9 @@ export class TeamController {
   }
 
   @Get('approval-requests')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '审批请求列表' })
+  @ZodResponse(ListApprovalRequestsOutputSchema)
   async listRequests(
     @TenantId() tenantId: string,
     @CurrentUser('sub') userId: string,
@@ -126,7 +166,9 @@ export class TeamController {
   }
 
   @Post('approval-requests/:id/approve')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '通过审批' })
+  @ZodResponse(ApproveStepOutputSchema)
   async approveStep(
     @Param('id') id: string,
     @CurrentUser('sub') approverId: string,
@@ -141,7 +183,9 @@ export class TeamController {
   }
 
   @Post('approval-requests/:id/reject')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '驳回审批' })
+  @ZodResponse(RejectRequestOutputSchema)
   async rejectRequest(
     @Param('id') id: string,
     @CurrentUser('sub') approverId: string,
@@ -158,7 +202,9 @@ export class TeamController {
   // ── 团队活动日志 ──────────────────────────────────────────────────
 
   @Get('activities')
+  @RequirePermission(PERMISSIONS.AUDIT_READ)
   @ApiOperation({ summary: '团队活动日志' })
+  @ZodResponse(GetActivitiesOutputSchema)
   async getActivities(
     @TenantId() tenantId: string,
     @Query('page') page?: number,

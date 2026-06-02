@@ -148,6 +148,7 @@ export class FollowerService {
       where: {
         followerId: { in: dto.followerIds },
         tagId: { in: validTagIds },
+        tag: { tenantId }, // 二次校验, 防越权
       },
     });
     return { removed: count };

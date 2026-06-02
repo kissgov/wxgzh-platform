@@ -193,12 +193,12 @@ export class ApprovalService {
 
     // 驳回所有未处理的步骤
     await this.prisma.approvalStep.updateMany({
-      where: { requestId, status: 'pending' },
+      where: { requestId, status: 'pending', request: { tenantId: request.tenantId } },
       data: { approverId, status: 'rejected', comment, actedAt: new Date() },
     });
 
     await this.prisma.approvalRequest.update({
-      where: { id: requestId },
+      where: { id: requestId, tenantId: request.tenantId },
       data: { status: 'rejected', resolvedAt: new Date() },
     });
 

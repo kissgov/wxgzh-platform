@@ -1,12 +1,38 @@
 // TenantController — 租户内用户 + 角色 + 订阅管理
 // ============================================================================
 import {
-  Controller, Get, Post, Put, Delete, Param, Body, UseGuards,
+  Controller, Get, Post, Put, Delete, Param, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, CurrentUser, RequireRoles } from '../../common/decorators/current-user.decorator';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
+import { ZodResponse } from '../../common/decorators/zod-response.decorator';
+import { RequirePermission } from '../../common/security/require-permission.decorator';
+import { PERMISSIONS } from '../../common/security/permissions';
 import { TenantService } from './tenant.service';
+import {
+  CreateUserInputSchema,
+  UpdateUserInputSchema,
+  CreateRoleInputSchema,
+  UpdateRoleInputSchema,
+  ListTenantsOutputSchema,
+  ListUsersOutputSchema,
+  CreateUserOutputSchema,
+  UpdateUserOutputSchema,
+  ListRolesOutputSchema,
+  CreateRoleOutputSchema,
+  UpdateRoleOutputSchema,
+  DeleteRoleOutputSchema,
+  GetMyAuthorizersOutputSchema,
+  GetMySubscriptionOutputSchema,
+  ListPlansOutputSchema,
+  ListPermissionsOutputSchema,
+  type CreateUserInput,
+  type UpdateUserInput,
+  type CreateRoleInput,
+  type UpdateRoleInput,
+} from '../../common/contracts/tenant.contract';
 
 @ApiTags('团队管理')
 @ApiBearerAuth()
@@ -19,7 +45,9 @@ export class TenantController {
 
   @Get('tenants')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '获取租户列表' })
+  @ZodResponse(ListTenantsOutputSchema)
   async listTenants() {
     const data = await this.tenantService.getTenants();
     return { code: 0, message: '成功', data };
@@ -29,7 +57,9 @@ export class TenantController {
 
   @Get('users')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '获取租户内用户列表' })
+  @ZodResponse(ListUsersOutputSchema)
   async listUsers(@TenantId() tenantId: string) {
     const data = await this.tenantService.getUsers(tenantId);
     return { code: 0, message: '成功', data };
@@ -37,13 +67,15 @@ export class TenantController {
 
   @Post('users')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建用户' })
+  @ZodResponse(CreateUserOutputSchema)
   async createUser(
     @TenantId() tenantId: string,
-    @Body() body: { name: string; email: string; password: string; roleIds?: string[]; authorizerIds?: string[] },
+    @ZodBody(CreateUserInputSchema) input: CreateUserInput,
   ) {
     try {
-      const data = await this.tenantService.createUser(tenantId, body);
+      const data = await this.tenantService.createUser(tenantId, input);
       return { code: 0, message: '用户已创建', data };
     } catch (err: any) {
       return { code: 10005, message: err.message, data: null };
@@ -52,12 +84,15 @@ export class TenantController {
 
   @Put('users/:userId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '更新用户' })
+  @ZodResponse(UpdateUserOutputSchema)
   async updateUser(
+    @TenantId() tenantId: string,
     @Param('userId') userId: string,
-    @Body() body: { name?: string; status?: string; roleIds?: string[]; authorizerIds?: string[] },
+    @ZodBody(UpdateUserInputSchema) input: UpdateUserInput,
   ) {
-    await this.tenantService.updateUser(userId, body);
+    await this.tenantService.updateUser(tenantId, userId, input);
     return { code: 0, message: '已更新', data: null };
   }
 
@@ -65,7 +100,9 @@ export class TenantController {
 
   @Get('roles')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '获取租户内角色列表' })
+  @ZodResponse(ListRolesOutputSchema)
   async listRoles(@TenantId() tenantId: string) {
     const data = await this.tenantService.getRoles(tenantId);
     return { code: 0, message: '成功', data };
@@ -73,29 +110,35 @@ export class TenantController {
 
   @Post('roles')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建角色' })
+  @ZodResponse(CreateRoleOutputSchema)
   async createRole(
     @TenantId() tenantId: string,
-    @Body() body: { name: string; slug: string; permissionIds?: string[] },
+    @ZodBody(CreateRoleInputSchema) input: CreateRoleInput,
   ) {
-    const data = await this.tenantService.createRole(tenantId, body);
+    const data = await this.tenantService.createRole(tenantId, input);
     return { code: 0, message: '角色已创建', data };
   }
 
   @Put('roles/:roleId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '更新角色' })
+  @ZodResponse(UpdateRoleOutputSchema)
   async updateRole(
     @Param('roleId') roleId: string,
-    @Body() body: { name?: string; permissionIds?: string[] },
+    @ZodBody(UpdateRoleInputSchema) input: UpdateRoleInput,
   ) {
-    await this.tenantService.updateRole(roleId, body);
+    await this.tenantService.updateRole(roleId, input);
     return { code: 0, message: '已更新', data: null };
   }
 
   @Delete('roles/:roleId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '删除角色' })
+  @ZodResponse(DeleteRoleOutputSchema)
   async deleteRole(@Param('roleId') roleId: string) {
     try {
       await this.tenantService.deleteRole(roleId);
@@ -109,6 +152,7 @@ export class TenantController {
 
   @Get('my-authorizers')
   @ApiOperation({ summary: '获取当前用户可管理的公众号' })
+  @ZodResponse(GetMyAuthorizersOutputSchema)
   async getMyAuthorizers(
     @CurrentUser('sub') userId: string,
     @CurrentUser('roles') roles: string[],
@@ -118,7 +162,9 @@ export class TenantController {
   }
 
   @Get('my-subscription')
+  @RequirePermission(PERMISSIONS.BILLING_READ)
   @ApiOperation({ summary: '当前租户的订阅信息' })
+  @ZodResponse(GetMySubscriptionOutputSchema)
   async getMySubscription(@TenantId() tenantId: string) {
     const data = await this.tenantService.getSubscription(tenantId);
     return { code: 0, message: '成功', data };
@@ -126,6 +172,7 @@ export class TenantController {
 
   @Get('plans')
   @ApiOperation({ summary: '获取订阅套餐列表' })
+  @ZodResponse(ListPlansOutputSchema)
   async listPlans() {
     const data = await this.tenantService.getPlans();
     return { code: 0, message: '成功', data };
@@ -133,6 +180,7 @@ export class TenantController {
 
   @Get('permissions')
   @ApiOperation({ summary: '获取所有可用权限列表' })
+  @ZodResponse(ListPermissionsOutputSchema)
   async listPermissions() {
     const data = await this.tenantService.getPermissions();
     return { code: 0, message: '成功', data };
