@@ -111,7 +111,7 @@ export class MaterialController {
   async update(
     @TenantId() tenantId: string,
     @Param('materialId') materialId: string,
-    @Body() input: UpdateMaterialInput,
+    @ZodBody(UpdateMaterialInputSchema) input: UpdateMaterialInput,
   ) {
     const data = await this.materialService.updateMaterial(materialId, tenantId, input);
     return { code: 0, message: '已更新', data };
