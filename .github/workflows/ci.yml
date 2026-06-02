@@ -29,6 +29,8 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - name: Cycle scan
+        run: ./scripts/cycle-scan.sh
 
   # ── TypeScript 类型检查 ─────────────────────────────────────────────
   typecheck:
