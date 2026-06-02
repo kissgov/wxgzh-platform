@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Redis } from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WechatService } from '../../integrations/wechat/wechat.service';
+import { businessEventsTotal } from '../../common/observability/metrics';
 import type { AuthorizerListQueryDto } from './platform.dto';
 
 @Injectable()
@@ -295,6 +296,7 @@ export class PlatformService {
       authorizerId: authorizer.id, tenantId, appId: authorizerAppId,
     });
 
+    businessEventsTotal.inc({ event: 'authorizer_added', tenant_id: tenantId });
     this.logger.log(`Authorizer created/updated: ${authorizer.nickName} (${authorizerAppId})`);
     return authorizer;
   }
@@ -313,6 +315,7 @@ export class PlatformService {
       where: { id: authorizer.id },
       data: { status: 'revoked' },
     });
+    businessEventsTotal.inc({ event: 'authorizer_revoked', tenant_id: authorizer.tenantId });
     this.eventEmitter.emit('authorizer.revoked', { authorizerId: authorizer.id, appId });
   }
 
@@ -434,6 +437,7 @@ export class PlatformService {
     this.eventEmitter.emit('authorizer.revoked', {
       authorizerId, appId: authorizer.appId,
     });
+    businessEventsTotal.inc({ event: 'authorizer_revoked', tenant_id: tenantId });
     this.logger.log(`Authorizer revoked: ${authorizerId} by user=${userId}`);
     return { status: 'revoked', revokedAt: new Date() };
   }

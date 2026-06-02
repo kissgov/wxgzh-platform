@@ -1,6 +1,7 @@
 // PaymentService — 支付订单 + 订阅激活 + Mock 支付
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { businessEventsTotal } from '../../common/observability/metrics';
 
 @Injectable()
 export class PaymentService {
@@ -50,6 +51,7 @@ export class PaymentService {
 
     const result: any = { ...order, isUpgrade, isDowngrade, isSwitchPeriod };
 
+    businessEventsTotal.inc({ event: 'order_created', tenant_id: tenantId });
     this.logger.log(`Order created: ${order.id} plan=${dto.plan} amount=${amount} status=${order.status} upgrade=${isUpgrade} downgrade=${isDowngrade}`);
     return result;
   }
@@ -105,7 +107,10 @@ export class PaymentService {
     });
     if (success) {
       const order = await this.prisma.paymentOrder.findFirst({ where: { tradeNo } });
-      if (order) await this.activateSubscription(order.tenantId, order.id);
+      if (order) {
+        businessEventsTotal.inc({ event: 'payment_succeeded', tenant_id: order.tenantId });
+        await this.activateSubscription(order.tenantId, order.id);
+      }
     }
   }
 
