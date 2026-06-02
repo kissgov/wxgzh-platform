@@ -223,7 +223,7 @@ describe('LlmService', () => {
     it('getConfig should mask apiKey to last 4 chars', async () => {
       mockPrisma.llmConfig.findUnique.mockResolvedValue({ ...baseConfig, apiKey: 'sk-abc12345XYZ' });
       const r = await service.getConfig('t1');
-      expect(r.apiKey).toBe('****5XYZ');
+      expect(r!.apiKey).toBe('****5XYZ');
     });
 
     it('getConfig should return null when no config', async () => {
@@ -234,7 +234,7 @@ describe('LlmService', () => {
     it('getConfig should return null apiKey when apiKey is null', async () => {
       mockPrisma.llmConfig.findUnique.mockResolvedValue({ ...baseConfig, apiKey: null });
       const r = await service.getConfig('t1');
-      expect(r.apiKey).toBeNull();
+      expect(r!.apiKey).toBeNull();
     });
 
     it('upsertConfig should clean empty strings to null and apply defaults', async () => {

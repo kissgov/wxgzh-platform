@@ -338,7 +338,7 @@ describe('TenantService', () => {
         },
       ]);
       const r = await service.getRoles('t1');
-      expect(r[0].permissions).toEqual([{ id: 'p1', slug: 'user.read', name: '读用户' }]);
+      expect(r[0]!.permissions).toEqual([{ id: 'p1', slug: 'user.read', name: '读用户' }]);
     });
 
     it('createRole should create + bind permissions', async () => {
