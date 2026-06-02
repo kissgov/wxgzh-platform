@@ -8,7 +8,8 @@ on:
 
 env:
   NODE_VERSION: '22'
-  PNPM_VERSION: '9'
+  # pnpm 版本统一由根 package.json `packageManager` (pnpm@11.4.0) 控制
+  # 与 ci.yml 一致, 避免 Multiple versions of pnpm 冲突
 
 jobs:
   # ── Gitleaks: secret 扫描 ────────────────────────────────────────
@@ -31,8 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -48,8 +47,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}

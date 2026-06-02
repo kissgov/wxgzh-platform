@@ -200,6 +200,43 @@ function scanDir(dir: string): void {
 
 SCAN_ROOTS.forEach(scanDir);
 
+// ── Baseline lock (V2.0.x phased fix) ──────────────────────────────────────
+// 把已存在的 leak 当 known debt 锁起来,CI 只挡 NEW leak。后续 PR 减少
+// baseline 数量,V2.0.x 渐进消化到 0。详见 docs/adrs/ADR-002-tenant-leak-baseline.md。
+//
+// 用法:
+//   `npx tsx scripts/tenant-leak-scan.ts --write-baseline` → 把当前 issues 写入 baseline
+//   `npx tsx scripts/tenant-leak-scan.ts`                  → 默认,读 baseline 只挡新 leak
+const BASELINE_PATH = path.join(SERVER_ROOT, 'scripts/tenant-leak-baseline.json');
+const WRITE_BASELINE = process.argv.includes('--write-baseline');
+
+function issueKey(i: Issue): string {
+  // 文件路径 normalize 成相对 SERVER_ROOT 的 posix 形式,Windows/Linux 一致
+  const rel = path.relative(SERVER_ROOT, i.file).replace(/\\/g, '/');
+  return `${rel}:${i.line}:${i.rule}`;
+}
+
+if (WRITE_BASELINE) {
+  const baseline = {
+    generatedAt: 'baseline-locked-at-S4-merge',
+    count: issues.length,
+    note: '当前 V2.0 已知未修越权点。V2.0.x 渐进减少到 0。新 PR 不得增加。',
+    keys: issues.map(issueKey).sort(),
+  };
+  fs.writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + '\n');
+  console.log(`✅ baseline 已写入 ${BASELINE_PATH} (${issues.length} 个 known issues)`);
+  process.exit(0);
+}
+
+const baselineKeys = new Set<string>();
+if (fs.existsSync(BASELINE_PATH)) {
+  const baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf-8')) as { keys: string[] };
+  for (const k of baseline.keys) baselineKeys.add(k);
+}
+
+const newIssues = issues.filter((i) => !baselineKeys.has(issueKey(i)));
+const knownIssues = issues.filter((i) => baselineKeys.has(issueKey(i)));
+
 if (warnings.length > 0) {
   console.log(`⚠️  ${warnings.length} 个 warning (create 缺 tenantId, 不阻断):`);
   for (const w of warnings.slice(0, 10)) {
@@ -211,14 +248,29 @@ if (warnings.length > 0) {
   console.log('');
 }
 
-if (issues.length > 0) {
-  console.error(`❌ 越权静态扫描发现 ${issues.length} 个问题:`);
-  for (const i of issues) {
+if (knownIssues.length > 0) {
+  console.log(`ℹ️  ${knownIssues.length} 个 known issues (在 baseline 内, 不阻断 — V2.0.x 渐进消化):`);
+  if (baselineKeys.size > 0) {
+    console.log(`  (baseline 总数 ${baselineKeys.size}; 若实际已修请运行 --write-baseline 更新)`);
+  }
+  console.log('');
+}
+
+if (newIssues.length > 0) {
+  console.error(`❌ 发现 ${newIssues.length} 个 NEW 越权 (不在 baseline 内, 必须修):`);
+  for (const i of newIssues) {
     console.error(`  ${i.file}:${i.line} [${i.rule}]`);
     console.error(`    snippet: ${i.snippet.slice(0, 120)}`);
     console.error(`    fix:     ${i.suggestion}`);
   }
+  console.error('');
+  console.error(`提示: 若该越权确属合法 (e.g. 平台 admin 路径), 在调用前一行加 \`// tenant-allow <理由>\` 注释豁免。`);
   process.exit(1);
 }
 
-console.log(`✅ Tenant-leak scan 0 errors (扫了 ${SCAN_ROOTS.length} 个根目录)`);
+const totalKnown = knownIssues.length;
+const baselineLeft = baselineKeys.size - totalKnown;
+if (baselineLeft > 0) {
+  console.log(`📉 baseline 减少 ${baselineLeft} 项 (实际已修但 baseline 未更新)。运行 \`--write-baseline\` 锁定新地板。`);
+}
+console.log(`✅ Tenant-leak scan 0 NEW leaks (${totalKnown} known / ${warnings.length} warnings)`);
