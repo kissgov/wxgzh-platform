@@ -41,6 +41,9 @@ const PLATFORM_PATH_PATTERNS = [
   /\/super-/i,
 ];
 
+// 接受嵌套 where 限定 (e.g., where: { group: { tenantId } })
+const NESTED_TENANT_RE = /\w+\s*:\s*\{[^}]*tenantId/;
+
 interface Issue {
   file: string;
   line: number;
@@ -145,7 +148,7 @@ function scanFile(filePath: string): void {
     }
     WHERE_RE.lastIndex = 0;
 
-    if (!TENANT_ID_RE.test(callArgs)) {
+    if (!TENANT_ID_RE.test(callArgs) && !NESTED_TENANT_RE.test(callArgs)) {
       // findFirst/findMany 缺 tenantId: 仅 warning (常使用外部 where 变量)
       if (method === 'findFirst' || method === 'findMany') {
         warnings.push({

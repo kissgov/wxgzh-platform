@@ -101,13 +101,13 @@ export class TenantService {
     dto: { name?: string; status?: string; roleIds?: string[]; authorizerIds?: string[] },
   ) {
     if (dto.name) {
-      await this.prisma.user.update({ where: { id: userId }, data: { name: dto.name } });
+      await this.prisma.user.update({ where: { id: userId, tenantId }, data: { name: dto.name } });
     }
     if (dto.status) {
-      await this.prisma.user.update({ where: { id: userId }, data: { status: dto.status } });
+      await this.prisma.user.update({ where: { id: userId, tenantId }, data: { status: dto.status } });
     }
     if (dto.roleIds) {
-      await this.prisma.userRole.deleteMany({ where: { userId } });
+      await this.prisma.userRole.deleteMany({ where: { userId, user: { tenantId } } });
       for (const roleId of dto.roleIds) {
         await this.prisma.userRole.create({ data: { userId, roleId } });
       }
@@ -116,7 +116,7 @@ export class TenantService {
       // 获取该用户的 tenantId
       const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
       if (user) {
-        await this.prisma.userAuthorizer.deleteMany({ where: { userId } });
+        await this.prisma.userAuthorizer.deleteMany({ where: { userId, user: { tenantId } } });
         for (const aid of dto.authorizerIds) {
           await this.prisma.userAuthorizer.create({
             data: { tenantId: user.tenantId, userId, authorizerId: aid },
