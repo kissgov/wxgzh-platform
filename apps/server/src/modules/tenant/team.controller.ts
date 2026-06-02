@@ -6,6 +6,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, CurrentUser, RequireRoles, Public } from '../../common/decorators/current-user.decorator';
+import { RequirePermission } from '../../common/security/require-permission.decorator';
+import { PERMISSIONS } from '../../common/security/permissions';
 import { InvitationService } from './invitation.service';
 import { ApprovalService } from './approval.service';
 import { TeamActivityService } from './team-activity.service';
@@ -25,6 +27,7 @@ export class TeamController {
 
   @Post('invitations')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '发送邀请' })
   async createInvitation(
     @TenantId() tenantId: string,
@@ -41,6 +44,7 @@ export class TeamController {
 
   @Get('invitations')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '邀请列表' })
   async listInvitations(@TenantId() tenantId: string) {
     const data = await this.invitationService.getInvitations(tenantId);
@@ -49,6 +53,7 @@ export class TeamController {
 
   @Delete('invitations/:id')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '取消邀请' })
   async cancelInvitation(
     @TenantId() tenantId: string,
@@ -83,6 +88,7 @@ export class TeamController {
 
   @Get('approval-workflows')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '审批流列表' })
   async listWorkflows(@TenantId() tenantId: string) {
     const data = await this.approvalService.listWorkflows(tenantId);
@@ -91,6 +97,7 @@ export class TeamController {
 
   @Post('approval-workflows')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建审批流' })
   async createWorkflow(
     @TenantId() tenantId: string,
@@ -101,6 +108,7 @@ export class TeamController {
   }
 
   @Post('approval-requests')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '提交审批' })
   async submitRequest(
     @TenantId() tenantId: string,
@@ -116,6 +124,7 @@ export class TeamController {
   }
 
   @Get('approval-requests')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '审批请求列表' })
   async listRequests(
     @TenantId() tenantId: string,
@@ -126,6 +135,7 @@ export class TeamController {
   }
 
   @Post('approval-requests/:id/approve')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '通过审批' })
   async approveStep(
     @Param('id') id: string,
@@ -141,6 +151,7 @@ export class TeamController {
   }
 
   @Post('approval-requests/:id/reject')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '驳回审批' })
   async rejectRequest(
     @Param('id') id: string,
@@ -158,6 +169,7 @@ export class TeamController {
   // ── 团队活动日志 ──────────────────────────────────────────────────
 
   @Get('activities')
+  @RequirePermission(PERMISSIONS.AUDIT_READ)
   @ApiOperation({ summary: '团队活动日志' })
   async getActivities(
     @TenantId() tenantId: string,

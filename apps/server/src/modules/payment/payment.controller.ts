@@ -3,6 +3,8 @@ import { Controller, Get, Post, Put, Param, Query, Body, UseGuards } from '@nest
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, RequireRoles, Public } from '../../common/decorators/current-user.decorator';
+import { RequirePermission } from '../../common/security/require-permission.decorator';
+import { PERMISSIONS } from '../../common/security/permissions';
 import { PaymentService } from './payment.service';
 
 @ApiTags('支付订阅')
@@ -15,10 +17,12 @@ export class PaymentController {
   // ── 用户端 ──────────────────────────────────────────────────────
 
   @Get('payment/plans')
+  @RequirePermission(PERMISSIONS.BILLING_READ)
   @ApiOperation({ summary: '套餐列表' })
   async listPlans() { const data = await this.paymentService.getPlans(); return { code: 0, message: '成功', data }; }
 
   @Post('payment/orders')
+  @RequirePermission(PERMISSIONS.BILLING_WRITE)
   @ApiOperation({ summary: '创建支付订单' })
   async createOrder(@TenantId() tenantId: string, @Body() body: { plan: string; period: string; method: string }) {
     try {
@@ -28,6 +32,7 @@ export class PaymentController {
   }
 
   @Get('payment/orders')
+  @RequirePermission(PERMISSIONS.BILLING_READ)
   @ApiOperation({ summary: '支付订单列表' })
   async listOrders(@TenantId() tenantId: string, @Query('page') page?: number) {
     const data = await this.paymentService.getOrders(tenantId, { page });
@@ -38,6 +43,7 @@ export class PaymentController {
 
   @Get('admin/payment-config')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '获取支付配置 [管理员]' })
   async getConfig(@TenantId() tenantId: string) {
     const data = await this.paymentService.getPaymentConfig(tenantId);
@@ -46,6 +52,7 @@ export class PaymentController {
 
   @Put('admin/payment-config')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '更新支付配置 [管理员]' })
   async updateConfig(@TenantId() tenantId: string, @Body() body: any) {
     const data = await this.paymentService.upsertPaymentConfig(tenantId, body);
@@ -54,11 +61,13 @@ export class PaymentController {
 
   @Get('admin/plans')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '套餐列表 [管理员]' })
   async adminPlans() { const data = await this.paymentService.getPlans(); return { code: 0, message: '成功', data }; }
 
   @Put('admin/plans/:slug')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '更新套餐 [管理员]' })
   async updatePlan(@Param('slug') slug: string, @Body() body: any) {
     const data = await this.paymentService.upsertPlan({ ...body, slug });
@@ -69,6 +78,7 @@ export class PaymentController {
 
   @Get('admin/tenants')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '租户列表 [超管]' })
   async adminTenants() {
     const { PrismaClient } = await import('@prisma/client');
@@ -85,6 +95,7 @@ export class PaymentController {
 
   @Put('admin/tenants/:id')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '更新租户 [超管]' })
   async adminUpdateTenant(@Param('id') id: string, @Body() body: any) {
     const { PrismaClient } = await import('@prisma/client');
@@ -97,6 +108,7 @@ export class PaymentController {
 
   @Post('admin/tenants/:id/subscribe')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '手动订阅 [超管]' })
   async adminSubscribeTenant(@Param('id') id: string, @Body() body: any) {
     // Create a paid order and activate subscription manually
@@ -115,6 +127,7 @@ export class PaymentController {
 
   @Get('admin/payment-orders')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '全部支付订单 [超管]' })
   async adminPaymentOrders(@Query('page') page?: number) {
     const { PrismaClient } = await import('@prisma/client');
@@ -131,6 +144,7 @@ export class PaymentController {
 
   @Post('admin/payment-orders/:id/confirm')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '手动确认收款 [超管]' })
   async adminConfirmPayment(@Param('id') id: string) {
     const { PrismaClient } = await import('@prisma/client');

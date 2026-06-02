@@ -6,6 +6,8 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId, CurrentUser, RequireRoles } from '../../common/decorators/current-user.decorator';
+import { RequirePermission } from '../../common/security/require-permission.decorator';
+import { PERMISSIONS } from '../../common/security/permissions';
 import { TenantService } from './tenant.service';
 
 @ApiTags('团队管理')
@@ -19,6 +21,7 @@ export class TenantController {
 
   @Get('tenants')
   @RequireRoles('super_admin')
+  @RequirePermission(PERMISSIONS.PLATFORM_ADMIN)
   @ApiOperation({ summary: '获取租户列表' })
   async listTenants() {
     const data = await this.tenantService.getTenants();
@@ -29,6 +32,7 @@ export class TenantController {
 
   @Get('users')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '获取租户内用户列表' })
   async listUsers(@TenantId() tenantId: string) {
     const data = await this.tenantService.getUsers(tenantId);
@@ -37,6 +41,7 @@ export class TenantController {
 
   @Post('users')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建用户' })
   async createUser(
     @TenantId() tenantId: string,
@@ -52,6 +57,7 @@ export class TenantController {
 
   @Put('users/:userId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '更新用户' })
   async updateUser(
     @Param('userId') userId: string,
@@ -65,6 +71,7 @@ export class TenantController {
 
   @Get('roles')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_READ)
   @ApiOperation({ summary: '获取租户内角色列表' })
   async listRoles(@TenantId() tenantId: string) {
     const data = await this.tenantService.getRoles(tenantId);
@@ -73,6 +80,7 @@ export class TenantController {
 
   @Post('roles')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '创建角色' })
   async createRole(
     @TenantId() tenantId: string,
@@ -84,6 +92,7 @@ export class TenantController {
 
   @Put('roles/:roleId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '更新角色' })
   async updateRole(
     @Param('roleId') roleId: string,
@@ -95,6 +104,7 @@ export class TenantController {
 
   @Delete('roles/:roleId')
   @RequireRoles('super_admin', 'admin')
+  @RequirePermission(PERMISSIONS.TEAM_WRITE)
   @ApiOperation({ summary: '删除角色' })
   async deleteRole(@Param('roleId') roleId: string) {
     try {
@@ -118,6 +128,7 @@ export class TenantController {
   }
 
   @Get('my-subscription')
+  @RequirePermission(PERMISSIONS.BILLING_READ)
   @ApiOperation({ summary: '当前租户的订阅信息' })
   async getMySubscription(@TenantId() tenantId: string) {
     const data = await this.tenantService.getSubscription(tenantId);
